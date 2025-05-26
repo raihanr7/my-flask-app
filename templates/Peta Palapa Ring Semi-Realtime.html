@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Peta Palapa Ring (Live Data)</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS dan JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { height: 100vh; width: 100%; }
+
+    #judul-peta {
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      font-family: Arial, sans-serif;
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      color: white;
+      background: rgba(0,0,0,0.4);
+      padding: 4px 12px;
+      border-radius: 8px;
+    }
+
+    .legend {
+      background: white;
+      padding: 10px;
+      line-height: 18px;
+      font-size: 13px;
+      border-radius: 5px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    }
+    .legend i {
+      width: 18px;
+      height: 18px;
+      float: left;
+      margin-right: 8px;
+      opacity: 0.8;
+    }
+
+    #sidebar {
+      position: absolute;
+      top: 0;
+      right: -400px;
+      width: 350px;
+      height: 100%;
+      background: white;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+      z-index: 1001;
+      transition: right 0.3s ease;
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    #sidebar.open {
+      right: 0;
+    }
+
+    #closeSidebar {
+      position: absolute;
+      top: 10px;
+      right: 15px;
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .label-nama {
+      font-size: 11px;
+      font-weight: bold;
+      color: #333;
+      background-color: rgba(255, 255, 255, 0.9);
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 2px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="judul-peta">Peta Palapa Ring & SKKL</div>
+  <div id="map"></div>
+
+  <div id="sidebar">
+    <button id="closeSidebar">Tutup</button>
+    <div id="sidebarContent"></div>
+  </div>
+
+  <script>
+    const map = L.map('map', {
+      maxBounds: [[-12, 90], [7, 142]],
+      maxBoundsViscosity: 1.0
+    }).setView([-2.5, 120], 5);
+
+    L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      attribution: 'Map data &copy; Google',
+      maxZoom: 20
+    }).addTo(map);
+
+    const sidebar = document.getElementById("sidebar");
+    const sidebarContent = document.getElementById("sidebarContent");
+
+    function showSidebar(html) {
+      sidebarContent.innerHTML = html;
+      sidebar.classList.add("open");
+    }
+
+    function hideSidebar() {
+      sidebar.classList.remove("open");
+    }
+
+    document.getElementById("closeSidebar").addEventListener("click", hideSidebar);
+    map.on("click", hideSidebar);
+
+    function styleTitik(feature) {
+      let warna = "#cccccc";
+      if (feature.properties.Keterangan === "Kota Interkoneksi") {
+        warna = "#00bfff";
+      } else if (feature.properties.Keterangan === "Kota Layanan") {
+        warna = "#ffff00";
+      }
+      return {
+        radius: 6,
+        fillColor: warna,
+        color: "#000",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.8
+      };
+    }
+
+    function styleAlur(feature) {
+      if (feature.properties.Description) {
+        return { color: "#d3f462", weight: 2, dashArray: "4 4", opacity: 0.7 };
+      }
+      const okupansi = parseFloat(feature.properties["Okupansi Telkom (%)"]);
+      let warna = "gray";
+      if (!isNaN(okupansi)) {
+        if (okupansi > 80) warna = "red";
+        else if (okupansi >= 50) warna = "yellow";
+        else warna = "green";
+      }
+      return { color: warna, weight: 3, opacity: 0.8 };
+    }
+
+    const groupLayers = {
+      'PalapaRingBarat': { alur: L.layerGroup(), point: L.layerGroup(), all: L.layerGroup() },
+      'PalapaRingTengah': { alur: L.layerGroup(), point: L.layerGroup(), all: L.layerGroup() },
+      'PalapaRingTimur': { alur: L.layerGroup(), point: L.layerGroup(), all: L.layerGroup() },
+      'submarineCable': L.layerGroup().addTo(map)
+    };
+
+    const BASE = "http://localhost:5000/api";
+
+    function loadGeoJsonFromAPI(url, type = 'point', targetGroup) {
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          targetGroup.clearLayers();
+
+          const kotaMicrowave = ["Sami", "Burmeso", "Elelim", "Wamena", "Kenyam", "Sumohai", "Dekai", "Oksibil", "Kobagma", "Tiom", "Karubaga", "Mulia", "Kepi Tower", "Ilaga", "Sugapa"];
+          const microwaveIcon = L.icon({ iconUrl: 'microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
+
+          const layer = L.geoJSON(data, {
+            pointToLayer: type === 'point' ? (feature, latlng) => {
+              if (url.includes("timur") && kotaMicrowave.includes(feature.properties.Nama)) {
+                return L.marker(latlng, { icon: microwaveIcon });
+              } else {
+                return L.circleMarker(latlng, styleTitik(feature));
+              }
+            } : undefined,
+            style: type === 'alur' ? styleAlur : undefined,
+            onEachFeature: function (feature, layer) {
+              const order = data.field_order ?? Object.keys(feature.properties);
+              let html = "<table>";
+              order.forEach(key => {
+                const value = feature.properties[key] ?? "-";
+                html += `<tr><td><strong>${key}</strong></td><td>: ${value}</td></tr>`;
+              });
+              html += "</table>";
+
+              layer.on("click", function (e) {
+                L.DomEvent.stopPropagation(e);
+                showSidebar(html);
+                if (layer.getBounds) {
+                  map.fitBounds(layer.getBounds(), { maxZoom: 9 });
+                } else if (layer.getLatLng) {
+                  map.setView(layer.getLatLng(), 9);
+                }
+              });
+
+              if (type === 'point' && feature.properties.Nama) {
+                layer.bindTooltip(feature.properties.Nama, {
+                  permanent: true,
+                  direction: 'top',
+                  className: 'label-nama'
+                }).openTooltip();
+              }
+            }
+          });
+
+          layer.addTo(targetGroup);
+        })
+        .catch(err => {
+          console.error("Failed to load:", url, err);
+          alert("Failed to load data: " + url);
+        });
+    }
+
+    function refreshAllLayers() {
+      loadGeoJsonFromAPI(`${BASE}/alur/barat`, "alur", groupLayers.PalapaRingBarat.alur);
+      loadGeoJsonFromAPI(`${BASE}/point/barat`, "point", groupLayers.PalapaRingBarat.point);
+      groupLayers.PalapaRingBarat.all.clearLayers();
+      groupLayers.PalapaRingBarat.all.addLayer(groupLayers.PalapaRingBarat.alur);
+      groupLayers.PalapaRingBarat.all.addLayer(groupLayers.PalapaRingBarat.point);
+
+      loadGeoJsonFromAPI(`${BASE}/alur/tengah`, "alur", groupLayers.PalapaRingTengah.alur);
+      loadGeoJsonFromAPI(`${BASE}/point/tengah`, "point", groupLayers.PalapaRingTengah.point);
+      groupLayers.PalapaRingTengah.all.clearLayers();
+      groupLayers.PalapaRingTengah.all.addLayer(groupLayers.PalapaRingTengah.alur);
+      groupLayers.PalapaRingTengah.all.addLayer(groupLayers.PalapaRingTengah.point);
+
+      loadGeoJsonFromAPI(`${BASE}/alur/timur`, "alur", groupLayers.PalapaRingTimur.alur);
+      loadGeoJsonFromAPI(`${BASE}/point/timur`, "point", groupLayers.PalapaRingTimur.point);
+      groupLayers.PalapaRingTimur.all.clearLayers();
+      groupLayers.PalapaRingTimur.all.addLayer(groupLayers.PalapaRingTimur.alur);
+      groupLayers.PalapaRingTimur.all.addLayer(groupLayers.PalapaRingTimur.point);
+
+      loadGeoJsonFromAPI(`${BASE}/alur/submarine`, "alur", groupLayers.submarineCable);
+    }
+
+    refreshAllLayers();
+    setInterval(refreshAllLayers, 30000);
+
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = function () {
+      const div = L.DomUtil.create("div", "legend");
+      div.innerHTML += "<h4>Keterangan Peta</h4>";
+      div.innerHTML += "<img src='microwave.png' style='width:18px; height:18px; margin-right:8px;'>Microwave/Radio<br>";
+      div.innerHTML += "<i style='background:#00bfff'></i> Kota Interkoneksi<br>";
+      div.innerHTML += "<i style='background:#ffff00'></i> Kota Layanan<br>";
+      div.innerHTML += "<hr>";
+      div.innerHTML += "<i style='background:green'></i> Okupansi < 50%<br>";
+      div.innerHTML += "<i style='background:yellow'></i> Okupansi 50–80%<br>";
+      div.innerHTML += "<i style='background:red'></i> Okupansi > 80%<br>";
+      div.innerHTML += "<i style='background:#d3f462; border:1px dashed #d3f462;'></i> Submarine Cable<br>";
+      return div;
+    };
+    legend.addTo(map);
+
+    L.control.layers(null, {
+      "Palapa Ring Barat": groupLayers.PalapaRingBarat.all.addTo(map),
+      "Palapa Ring Tengah": groupLayers.PalapaRingTengah.all.addTo(map),
+      "Palapa Ring Timur": groupLayers.PalapaRingTimur.all.addTo(map),
+      "Submarine Cable": groupLayers.submarineCable
+    }).addTo(map);
+  </script>
+</body>
+</html>
