@@ -7,12 +7,14 @@ app = Flask(__name__)
 CORS(app)
 
 conn = psycopg2.connect(
-    host='aws-0-ap-southeast-1.pooler.supabase.com',
-    database='postgres',
-    user='postgres.wtmfsznnmyinbgzkdofz',  
-    password='palaparingproject',  
-    port='6543'  
+    host='aws-0-ap-southeast-1.pooler.supabase.com',  # Ganti dengan host dari Supabase pooler
+    database='postgres',                               # Nama database
+    user='postgres.wtmfsznnmyinbgzkdofz',             # Nama pengguna
+    password='palaparingproject',                   # Ganti dengan password yang benar
+    port='6543',                                       # Port yang digunakan oleh pooler
+    options='-c pool_mode=transaction'                 # Menentukan mode pool
 )
+
 
 FIELD_ORDER = {
     "Palapa_Ring_Barat_Alur": [
