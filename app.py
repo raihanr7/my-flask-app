@@ -6,7 +6,13 @@ import json
 app = Flask(__name__)
 CORS(app)
 
-conn = psycopg2.connect("postgresql://postgres:palaparingproject@db.wtmfsznnmyinbgzkdofz.supabase.co:5432/postgres")
+conn = psycopg2.connect(
+    host="db.wtmfsznnmyinbgzkdofz.supabase.co",
+    database="postgres",
+    user="postgres",
+    password="palaparingproject",
+    port="5432"
+)
 
 FIELD_ORDER = {
     "Palapa_Ring_Barat_Alur": [
