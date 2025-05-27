@@ -7,10 +7,10 @@ app = Flask(__name__)
 CORS(app)
 
 conn = psycopg2.connect(
-    host="10.227.4.136",
-    database="Palapa Ring Project (Database)",
+    host="db.wtmfsznnmyinbgzkdofz.supabase.co",
+    database="postgres",
     user="postgres",
-    password="1029384756",
+    password="palaparingproject",
     port="5432"
 )
 
