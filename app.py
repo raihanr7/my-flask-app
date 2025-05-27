@@ -7,11 +7,11 @@ app = Flask(__name__)
 CORS(app)
 
 conn = psycopg2.connect(
-    host='aws-0-ap-southeast-1.pooler.supabase.com',
-    database='postgres',
-    user='postgres.wtmfsznnmyinbgzkdofz',  
-    password='palaparingproject',  
-    port='6543'  
+    host="localhost",
+    database="Palapa Ring Project (Database)",
+    user="postgres",
+    password="1029384756",
+    port="5432"
 )
 
 FIELD_ORDER = {
