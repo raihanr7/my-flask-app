@@ -11,7 +11,8 @@ conn = psycopg2.connect(
     database='postgres',                               # Nama database
     user='postgres.wtmfsznnmyinbgzkdofz',             # Nama pengguna
     password='palaparingproject',                   # Ganti dengan password yang benar
-    port='5432'                                        # Port default PostgreSQL
+    port='6543',                                       # Port untuk pooler
+    options='-c pool_mode=session'                     # Menentukan mode pool
 )
 
 
