@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 import psycopg2
 import json
@@ -6,26 +6,18 @@ import json
 app = Flask(__name__)
 CORS(app)
 
+# Koneksi ke database PostgreSQL menggunakan Supabase pooler
 conn = psycopg2.connect(
     host='aws-0-ap-southeast-1.pooler.supabase.com',  # Host dari Supabase pooler
     database='postgres',                               # Nama database
-    user='postgres.wtmfsznnmyinbgzkdofz',             # Nama penggunag
-    password='palaparingproject',                   # Ganti dengan password yang benar
-    port='5432',                                       # Port untuk pooler
+    user='postgres.wtmfsznnmyinbgzkdofz',             # Nama pengguna
+    password='palaparingproject',                      # Ganti dengan password yang benar
+    port='6543',                                       # Port untuk pooler
     options='-c pool_mode=session'                     # Menentukan mode pool
 )
 
-
 FIELD_ORDER = {
     "Palapa_Ring_Barat_Alur": [
-        "Link", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
-        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
-    ],
-    "Palapa_Ring_Tengah_Alur": [
-        "Link", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
-        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
-    ],
-    "Palapa_Ring_Timur_Alur": [
         "Link", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
         "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
     ],
@@ -33,22 +25,12 @@ FIELD_ORDER = {
         "fid", "Nama", "Project", "Nama Kota", "Nama Provinsi",
         "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
     ],
-    "Palapa_Ring_Tengah_Point": [
-        "fid", "Nama", "Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
-    ],
-    "Palapa_Ring_Timur_Point": [
-        "fid", "Nama", "Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
-    ],
-    "SubmarineCable_Alur": [
-        "fid", "Link", "Description"
-    ]
+    # Tambahkan entri untuk tabel lainnya
 }
 
 def get_geojson_from_table(table_name):
     cur = conn.cursor()
-    cur.execute(f'SELECT *, ST_AsGeoJSON(geom) FROM "{table_name}"')
+    cur.execute(f'SELECT *, ST_AsGeoJSON(geom) FROM "{table_name}"')  # Pastikan 'geom' ada di tabel
     rows = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
 
@@ -60,7 +42,7 @@ def get_geojson_from_table(table_name):
         props = {key: full_props.get(key, "") for key in ordered_keys}
         feature = {
             "type": "Feature",
-            "geometry": json.loads(row[-1]),
+            "geometry": json.loads(row[-1]),  # Mengambil geometri dari hasil SQL
             "properties": props
         }
         features.append(feature)
@@ -71,6 +53,11 @@ def get_geojson_from_table(table_name):
         "field_order": ordered_keys
     }
     return geojson
+
+# Rute untuk halaman utama (homepage)
+@app.route('/')
+def index():
+    return render_template('Peta Palapa Ring Semi-Realtime.html')  # Menyajikan file HTML
 
 # Endpoint GET data
 @app.route('/api/point/barat')
@@ -101,7 +88,7 @@ def alur_timur():
 def alus_submarine():
     return jsonify(get_geojson_from_table("SubmarineCable_Alur"))
 
-# ✨ Endpoint dinamis update data dan Updated at
+# ✨ Endpoint dinamis untuk update data dan "Updated at"
 @app.route('/api/update/<table_name>/<int:fid>', methods=['POST'])
 def update_table(table_name, fid):
     data = request.get_json()
@@ -132,6 +119,6 @@ def update_table(table_name, fid):
         conn.rollback()
         return jsonify({"error": str(e)}), 500
 
-# Run server
+# Menjalankan server
 if __name__ == '__main__':
     app.run(debug=True)
