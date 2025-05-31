@@ -5,13 +5,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Leaflet CSS dan JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet CSS dan JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <style>
-        body { margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100%; }
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { height: 100vh; width: 100%; }
 
         #judul-peta {
             text-align: center;
@@ -161,7 +161,7 @@
             'submarineCable': L.layerGroup().addTo(map)
         };
 
-        const BASE = "http://127.0.0.1:5000/api";  // Gantilah dengan URL aplikasi Anda di Vercel
+    const BASE = "http://localhost:5000/api";
 
         function loadGeoJsonFromAPI(url, type = 'point', targetGroup) {
             fetch(url)
@@ -169,13 +169,8 @@
                 .then(data => {
                     targetGroup.clearLayers();
 
-                    const kotaMicrowave = ["Sami", "Burmeso", "Elelim", "Wamena", "Kenyam", "Sumohai", "Dekai", "Oksibil", "Kobagma", "Tiom", "Karubaga", "Mulia", "Kepi Tower", "Ilaga", "Sugapa"];
-                    const microwaveIcon = L.icon({ 
-                        iconUrl: '/static/microwave.png',  // Menggunakan gambar dari folder static
-                        iconSize: [24, 24], 
-                        iconAnchor: [12, 12], 
-                        popupAnchor: [0, -10] 
-                    });
+          const kotaMicrowave = ["Sami", "Burmeso", "Elelim", "Wamena", "Kenyam", "Sumohai", "Dekai", "Oksibil", "Kobagma", "Tiom", "Karubaga", "Mulia", "Kepi Tower", "Ilaga", "Sugapa"];
+          const microwaveIcon = L.icon({ iconUrl: 'microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
 
                     const layer = L.geoJSON(data, {
                         pointToLayer: type === 'point' ? (feature, latlng) => {
