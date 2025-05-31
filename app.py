@@ -21,11 +21,29 @@ FIELD_ORDER = {
         "Link", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
         "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
     ],
+    "Palapa_Ring_Tengah_Alur": [
+        "Link", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
+        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
+    ],
+    "Palapa_Ring_Timur_Alur": [
+        "Link", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
+        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
+    ],
     "Palapa_Ring_Barat_Point": [
         "fid", "Nama", "Project", "Nama Kota", "Nama Provinsi",
         "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
     ],
-    # Tambahkan entri untuk tabel lainnya
+    "Palapa_Ring_Tengah_Point": [
+        "fid", "Nama", "Project", "Nama Kota", "Nama Provinsi",
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
+    ],
+    "Palapa_Ring_Timur_Point": [
+        "fid", "Nama", "Project", "Nama Kota", "Nama Provinsi",
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
+    ],
+    "SubmarineCable_Alur": [
+        "fid", "Link", "Description"
+    ]
 }
 
 def get_geojson_from_table(table_name):
