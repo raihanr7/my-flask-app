@@ -9,7 +9,7 @@ CORS(app)
 # Koneksi ke database PostgreSQL menggunakan Supabase pooler
 conn = psycopg2.connect(
     host='aws-0-ap-southeast-1.pooler.supabase.com',  # Host dari Supabase pooler
-    database='postgres',                               # Nama database
+    database='supabase_realtime',                               # Nama database
     user='postgres.wtmfsznnmyinbgzkdofz',             # Nama pengguna
     password='palaparingproject',                      # Ganti dengan password yang benar
     port='6543',                                       # Port untuk pooler
