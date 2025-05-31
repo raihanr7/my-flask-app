@@ -161,7 +161,7 @@
             'submarineCable': L.layerGroup().addTo(map)
         };
 
-    const BASE = "https://my-flask-dkfvci2va-palaparingallproject.vercel.app/api";
+    const BASE = "postgresql://postgres.wtmfsznnmyinbgzkdofz:palaparingproject@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres/api";
 
         function loadGeoJsonFromAPI(url, type = 'point', targetGroup) {
             fetch(url)
