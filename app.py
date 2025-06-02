@@ -67,7 +67,7 @@ def get_geojson_from_table(table_name):
             # convert ke WIB
             ts_wib = ts_utc.astimezone(wib_tz)
             # format ke string sesuai keinginan
-            full_props["Updated at"] = ts_wib.strftime('%Y-%m-%d %H:%M:%S')
+            full_props["Updated at"] = ts_wib.strftime('%Y-%m-%d %H:%M:%S %Z')
 
         # Properties sesuai urutan
         props = {key: full_props.get(key, "") for key in ordered_keys}
