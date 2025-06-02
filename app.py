@@ -13,7 +13,7 @@ conn = psycopg2.connect(
     user='postgres.wtmfsznnmyinbgzkdofz',             # Nama pengguna
     password='palaparingproject',                      # Ganti dengan password yang benar
     port='6543',                                       # Port untuk pooler
-    options='-c pool_mode=transaction'                     # Menentukan mode pool
+    options='-c timezone=Asia/Jakarta -c pool_mode=transaction'                     # Menentukan mode pool
 )
 
 FIELD_ORDER = {
