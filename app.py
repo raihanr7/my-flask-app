@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 import psycopg2
 import json
+import pytz
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -48,19 +50,31 @@ FIELD_ORDER = {
 
 def get_geojson_from_table(table_name):
     cur = conn.cursor()
-    cur.execute(f'SELECT *, ST_AsGeoJSON(geom) FROM "{table_name}"')  # Pastikan 'geom' ada di tabel
+    cur.execute(f'SELECT *, ST_AsGeoJSON(geom) FROM "{table_name}"')
     rows = cur.fetchall()
     colnames = [desc[0] for desc in cur.description]
 
     ordered_keys = FIELD_ORDER.get(table_name, colnames[:-1])
+    wib_tz = pytz.timezone('Asia/Jakarta')
 
     features = []
     for row in rows:
         full_props = dict(zip(colnames, row))
+        # Konversi Updated at ke WIB jika ada
+        if "Updated at" in full_props and full_props["Updated at"]:
+            # full_props["Updated at"] adalah datetime aware (timestamptz)
+            ts_utc = full_props["Updated at"]
+            # convert ke WIB
+            ts_wib = ts_utc.astimezone(wib_tz)
+            # format ke string sesuai keinginan
+            full_props["Updated at"] = ts_wib.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Properties sesuai urutan
         props = {key: full_props.get(key, "") for key in ordered_keys}
+
         feature = {
             "type": "Feature",
-            "geometry": json.loads(row[-1]),  # Mengambil geometri dari hasil SQL
+            "geometry": json.loads(row[-1]),
             "properties": props
         }
         features.append(feature)
@@ -71,7 +85,6 @@ def get_geojson_from_table(table_name):
         "field_order": ordered_keys
     }
     return geojson
-
 # Rute untuk halaman utama (homepage)
 @app.route('/')
 def index():
