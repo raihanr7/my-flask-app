@@ -171,7 +171,7 @@
                     targetGroup.clearLayers();
 
           const kotaMicrowave = ["Sami", "Burmeso", "Elelim", "Wamena", "Kenyam", "Sumohai", "Dekai", "Oksibil", "Kobagma", "Tiom", "Karubaga", "Mulia", "Kepi Tower", "Ilaga", "Sugapa"];
-          const microwaveIcon = L.icon({ iconUrl: 'microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
+          const microwaveIcon = L.icon({ iconUrl: '/static/microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
 
                     const layer = L.geoJSON(data, {
                         pointToLayer: type === 'point' ? (feature, latlng) => {
