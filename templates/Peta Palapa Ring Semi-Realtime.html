@@ -5,13 +5,15 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Leaflet CSS dan JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <style>
-    body { margin: 0; padding: 0; }
-    #map { height: 100vh; width: 100%; }
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.css" />
+    <script src="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.js"></script>
+
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; }
 
         #judul-peta {
             text-align: center;
@@ -85,6 +87,51 @@
             border: 1px solid #ccc;
             box-shadow: 0 0 2px rgba(0,0,0,0.3);
         }
+
+        /* Styles untuk sidebar dan form edit */
+        #sidebar table { width: 100%; border-collapse: collapse; }
+        #sidebar table td { padding: 6px 0; vertical-align: top; border-bottom: 1px solid #f0f0f0; }
+        #sidebar table td:first-child { width: 40%; }
+        .okupansi-value-container { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .okupansi-display { display: inline-flex; align-items: center; gap: 6px; }
+        .okupansi-edit-form { display: none; align-items: center; gap: 6px; flex-wrap: wrap; }
+        .btn-edit { background: #2196F3; color: white; border: none; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: background 0.2s; }
+        .btn-edit:hover { background: #1976D2; }
+        .edit-input { width: 70px; padding: 3px 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; text-align: center; }
+        .btn-save { background: #4CAF50; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-save:hover { background: #45a049; }
+        .btn-cancel { background: #f44336; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-cancel:hover { background: #da190b; }
+        .loading-text { color: #666; font-style: italic; font-size: 11px; }
+
+        /* Styles untuk notifikasi */
+        .notification { position: fixed; top: 60px; right: 20px; padding: 12px 20px; border-radius: 6px; font-weight: bold; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out; }
+        .notification.success { background: #4CAF50; color: white; }
+        .notification.error { background: #f44336; color: white; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .notification.fadeOut { animation: fadeOut 0.3s ease-out forwards; }
+        @keyframes fadeOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+
+        /* Style untuk search box agar terlihat lebih baik */
+        .leaflet-control-search .search-input { height: 30px; font-size: 14px; }
+        .leaflet-control-search .search-button { height: 30px; }
+        
+        /* Style untuk tombol custom control "Update History" */
+        .leaflet-control-history a {
+            text-decoration: none;
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white !important;
+            border-radius: 4px;
+            font-family: sans-serif;
+            font-size: 14px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+            display: block;
+            white-space: nowrap; /* Mencegah teks turun baris */
+        }
+        .leaflet-control-history a:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 
@@ -111,6 +158,11 @@
         const sidebar = document.getElementById("sidebar");
         const sidebarContent = document.getElementById("sidebarContent");
 
+        let currentFeature = null;
+        let currentLayer = null;
+        let currentTableName = null;
+        let isEditMode = false;
+
         function showSidebar(html) {
             sidebarContent.innerHTML = html;
             sidebar.classList.add("open");
@@ -118,6 +170,124 @@
 
         function hideSidebar() {
             sidebar.classList.remove("open");
+            resetEditMode();
+        }
+
+        function resetEditMode() {
+            currentFeature = null;
+            currentLayer = null;
+            currentTableName = null;
+            isEditMode = false;
+        }
+
+        function showNotification(message, type = 'success') {
+            const existingNotification = document.querySelector('.notification');
+            if (existingNotification) existingNotification.remove();
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => {
+                notification.classList.add('fadeOut');
+                setTimeout(() => { if (notification.parentNode) notification.parentNode.removeChild(notification); }, 300);
+            }, 3000);
+        }
+
+        function buildSidebarContent(feature, data, layerInstance, tableName) {
+            const order = data.field_order ?? Object.keys(feature.properties);
+            let html = "<table>";
+            order.forEach(key => {
+                const value = feature.properties[key] ?? "-";
+                if (key === "Okupansi Telkom (%)" && feature.properties.hasOwnProperty("Okupansi Telkom (%)")) {
+                    html += `<tr><td><strong>${key}</strong></td><td><div class="okupansi-value-container"><div class="okupansi-display" id="okupansiDisplay"><span>: ${value}%</span><button class="btn-edit" onclick="startEdit()">edit</button></div><div class="okupansi-edit-form" id="okupansiEditForm"><span>:</span><input type="number" id="okupansiInput" class="edit-input" min="0" max="100" step="0.01" value="${value}" /><span>%</span><button class="btn-save" onclick="saveOkupansi()">Simpan</button><button class="btn-cancel" onclick="cancelEdit()">Batal</button><span id="loadingStatus" class="loading-text" style="display: none;"></span></div></div></td></tr>`;
+                } else {
+                    html += `<tr><td><strong>${key}</strong></td><td>: ${value}</td></tr>`;
+                }
+            });
+            html += "</table>";
+            return html;
+        }
+
+        function startEdit() {
+            if (!currentFeature || !currentTableName) return;
+            isEditMode = true;
+            document.getElementById('okupansiDisplay').style.display = 'none';
+            document.getElementById('okupansiEditForm').style.display = 'flex';
+            document.getElementById('okupansiInput').focus();
+        }
+
+        function cancelEdit() {
+            document.getElementById('okupansiDisplay').style.display = 'flex';
+            document.getElementById('okupansiEditForm').style.display = 'none';
+            document.getElementById('loadingStatus').style.display = 'none';
+            isEditMode = false;
+            if (currentFeature) document.getElementById('okupansiInput').value = currentFeature.properties['Okupansi Telkom (%)'] || '';
+        }
+
+        async function saveOkupansi() {
+            if (!currentFeature || !currentTableName) return;
+            const okupansiValue = document.getElementById('okupansiInput').value;
+            const statusSpan = document.getElementById('loadingStatus');
+            let idValue = currentFeature.properties.Link;
+            let apiEndpoint = `/api/update-by-link/${currentTableName}/${encodeURIComponent(idValue)}`;
+
+            if (!idValue) { showNotification('ID/Link tidak ditemukan untuk update', 'error'); return; }
+            if (okupansiValue === '' || isNaN(okupansiValue) || okupansiValue < 0 || okupansiValue > 100) { showNotification('Nilai okupansi harus antara 0-100', 'error'); return; }
+
+            statusSpan.style.display = 'inline';
+            statusSpan.textContent = 'Menyimpan...';
+
+            try {
+                const response = await fetch(apiEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 'Okupansi Telkom (%)': parseFloat(okupansiValue) })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showNotification('Okupansi berhasil diupdate', 'success');
+                    currentFeature.properties['Okupansi Telkom (%)'] = parseFloat(okupansiValue);
+                    document.querySelector('#okupansiDisplay span').textContent = `: ${okupansiValue}%`;
+                    if (currentLayer && currentLayer.setStyle) {
+                        currentLayer.setStyle(styleAlur(currentFeature));
+                    }
+                    if (currentLayer && currentLayer._map) {
+                        currentLayer._map.invalidateSize();
+                    }
+                    setTimeout(() => refreshSpecificLayer(), 500);
+                    setTimeout(() => cancelEdit(), 1000);
+                } else {
+                    showNotification(`Error: ${result.error || 'Gagal menyimpan'}`, 'error');
+                }
+            } catch (error) {
+                showNotification('Error: Gagal menghubungi server', 'error');
+            } finally {
+                statusSpan.style.display = 'none';
+            }
+        }
+
+        function refreshSpecificLayer() {
+            if (!currentTableName) return;
+            let projectGroup;
+            let alurUrl;
+            if (currentTableName.includes('Barat')) {
+                projectGroup = groupLayers.PalapaRingBarat;
+                alurUrl = `${BASE}/alur/barat`;
+            } else if (currentTableName.includes('Tengah')) {
+                projectGroup = groupLayers.PalapaRingTengah;
+                alurUrl = `${BASE}/alur/tengah`;
+            } else if (currentTableName.includes('Timur')) {
+                projectGroup = groupLayers.PalapaRingTimur;
+                alurUrl = `${BASE}/alur/timur`;
+            }
+            if(projectGroup) {
+                loadGeoJsonFromAPI(alurUrl, "alur", projectGroup.alur);
+                setTimeout(() => {
+                    projectGroup.all.clearLayers();
+                    projectGroup.all.addLayer(projectGroup.alur);
+                    projectGroup.all.addLayer(projectGroup.point);
+                }, 100);
+            }
         }
 
         document.getElementById("closeSidebar").addEventListener("click", hideSidebar);
@@ -125,25 +295,13 @@
 
         function styleTitik(feature) {
             let warna = "#cccccc";
-            if (feature.properties.Keterangan === "Kota Interkoneksi") {
-                warna = "#00bfff";
-            } else if (feature.properties.Keterangan === "Kota Layanan") {
-                warna = "#ffff00";
-            }
-            return {
-                radius: 6,
-                fillColor: warna,
-                color: "#000",
-                weight: 1,
-                opacity: 1,
-                fillOpacity: 0.8
-            };
+            if (feature.properties.Keterangan === "Kota Interkoneksi") warna = "#00bfff";
+            else if (feature.properties.Keterangan === "Kota Layanan") warna = "#ffff00";
+            return { radius: 6, fillColor: warna, color: "#000", weight: 1, opacity: 1, fillOpacity: 0.8 };
         }
 
         function styleAlur(feature) {
-            if (feature.properties.Description) {
-                return { color: "#d3f462", weight: 2, dashArray: "4 4", opacity: 0.7 };
-            }
+            if (feature.properties.Description) return { color: "#d3f462", weight: 2, dashArray: "4 4", opacity: 0.7 };
             const okupansi = parseFloat(feature.properties["Okupansi Telkom (%)"]);
             let warna = "gray";
             if (!isNaN(okupansi)) {
@@ -160,111 +318,116 @@
             'PalapaRingTimur': { alur: L.layerGroup(), point: L.layerGroup(), all: L.layerGroup() },
             'submarineCable': L.layerGroup().addTo(map)
         };
+        
+        const searchablePointsLayer = L.layerGroup();
 
-    const BASE = "http://localhost:5000/api";
+        const BASE = "/api"; 
 
         function loadGeoJsonFromAPI(url, type = 'point', targetGroup) {
             fetch(url)
                 .then(res => res.json())
                 .then(data => {
                     targetGroup.clearLayers();
-
-          const kotaMicrowave = ["Sami", "Burmeso", "Elelim", "Wamena", "Kenyam", "Sumohai", "Dekai", "Oksibil", "Kobagma", "Tiom", "Karubaga", "Mulia", "Kepi Tower", "Ilaga", "Sugapa"];
-          const microwaveIcon = L.icon({ iconUrl: 'microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
-
+                    const kotaMicrowave = ["Sami", "Burmeso", "Elelim", "Wamena", "Kenyam", "Sumohai", "Dekai", "Oksibil", "Kobagma", "Tiom", "Karubaga", "Mulia", "Kepi Tower", "Ilaga", "Sugapa"];
+                    const microwaveIcon = L.icon({ iconUrl: '/static/microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
                     const layer = L.geoJSON(data, {
-                        pointToLayer: type === 'point' ? (feature, latlng) => {
-                            if (kotaMicrowave.includes(feature.properties.Nama)) {
-                                return L.marker(latlng, { icon: microwaveIcon });
-                            } else {
-                                return L.circleMarker(latlng, styleTitik(feature));
-                            }
-                        } : undefined,
+                        pointToLayer: (feature, latlng) => {
+                            if (type === 'point' && kotaMicrowave.includes(feature.properties.Nama)) return L.marker(latlng, { icon: microwaveIcon });
+                            if (type === 'point') return L.circleMarker(latlng, styleTitik(feature));
+                        },
                         style: type === 'alur' ? styleAlur : undefined,
                         onEachFeature: function (feature, layer) {
-                            const order = data.field_order ?? Object.keys(feature.properties);
-                            let html = "<table>";
-                            order.forEach(key => {
-                                const value = feature.properties[key] ?? "-";
-                                html += `<tr><td><strong>${key}</strong></td><td>: ${value}</td></tr>`;
-                            });
-                            html += "</table>";
-
                             layer.on("click", function (e) {
                                 L.DomEvent.stopPropagation(e);
-                                showSidebar(html);
-                                if (layer.getBounds) {
-                                    map.fitBounds(layer.getBounds(), { maxZoom: 9 });
-                                } else if (layer.getLatLng) {
-                                    map.setView(layer.getLatLng(), 9);
+                                currentFeature = feature;
+                                currentLayer = layer;
+                                if (type === 'alur') {
+                                    if (url.includes('/alur/barat')) currentTableName = 'Palapa_Ring_Barat_Alur';
+                                    else if (url.includes('/alur/tengah')) currentTableName = 'Palapa_Ring_Tengah_Alur';
+                                    else if (url.includes('/alur/timur')) currentTableName = 'Palapa_Ring_Timur_Alur';
                                 }
+                                showSidebar(buildSidebarContent(feature, data, layer, currentTableName));
+                                if (layer.getBounds) map.fitBounds(layer.getBounds(), { maxZoom: 9 });
+                                else if (layer.getLatLng) map.setView(layer.getLatLng(), 9);
                             });
-
                             if (type === 'point' && feature.properties.Nama) {
-                                layer.bindTooltip(feature.properties.Nama, {
-                                    permanent: true,
-                                    direction: 'top',
-                                    className: 'label-nama'
-                                }).openTooltip();
+                                layer.bindTooltip(feature.properties.Nama, { permanent: true, direction: 'top', className: 'label-nama' }).openTooltip();
+                                layer.options.title = feature.properties.Nama;
+                                searchablePointsLayer.addLayer(layer);
                             }
                         }
                     });
-
                     layer.addTo(targetGroup);
                 })
-                .catch(err => {
-                    console.error("Failed to load:", url, err);
-                    alert("Failed to load data: " + url);
-                });
+                .catch(err => console.error("Failed to load:", url, err));
         }
 
         function refreshAllLayers() {
-            loadGeoJsonFromAPI(`${BASE}/alur/barat`, "alur", groupLayers.PalapaRingBarat.alur);
-            loadGeoJsonFromAPI(`${BASE}/point/barat`, "point", groupLayers.PalapaRingBarat.point);
-            groupLayers.PalapaRingBarat.all.clearLayers();
-            groupLayers.PalapaRingBarat.all.addLayer(groupLayers.PalapaRingBarat.alur);
-            groupLayers.PalapaRingBarat.all.addLayer(groupLayers.PalapaRingBarat.point);
-
-            loadGeoJsonFromAPI(`${BASE}/alur/tengah`, "alur", groupLayers.PalapaRingTengah.alur);
-            loadGeoJsonFromAPI(`${BASE}/point/tengah`, "point", groupLayers.PalapaRingTengah.point);
-            groupLayers.PalapaRingTengah.all.clearLayers();
-            groupLayers.PalapaRingTengah.all.addLayer(groupLayers.PalapaRingTengah.alur);
-            groupLayers.PalapaRingTengah.all.addLayer(groupLayers.PalapaRingTengah.point);
-
-            loadGeoJsonFromAPI(`${BASE}/alur/timur`, "alur", groupLayers.PalapaRingTimur.alur);
-            loadGeoJsonFromAPI(`${BASE}/point/timur`, "point", groupLayers.PalapaRingTimur.point);
-            groupLayers.PalapaRingTimur.all.clearLayers();
-            groupLayers.PalapaRingTimur.all.addLayer(groupLayers.PalapaRingTimur.alur);
-            groupLayers.PalapaRingTimur.all.addLayer(groupLayers.PalapaRingTimur.point);
-
+            searchablePointsLayer.clearLayers();
+            const projects = ['Barat', 'Tengah', 'Timur'];
+            projects.forEach(proj => {
+                const group = groupLayers[`PalapaRing${proj}`];
+                loadGeoJsonFromAPI(`${BASE}/alur/${proj.toLowerCase()}`, "alur", group.alur);
+                loadGeoJsonFromAPI(`${BASE}/point/${proj.toLowerCase()}`, "point", group.point);
+                setTimeout(() => {
+                    group.all.clearLayers();
+                    group.all.addLayer(group.alur);
+                    group.all.addLayer(group.point);
+                }, 200);
+            });
             loadGeoJsonFromAPI(`${BASE}/alur/submarine`, "alur", groupLayers.submarineCable);
         }
 
         refreshAllLayers();
-        setInterval(refreshAllLayers, 30000); // Refresh every 30 seconds
+        setInterval(refreshAllLayers, 30000);
 
         const legend = L.control({ position: "bottomright" });
         legend.onAdd = function () {
             const div = L.DomUtil.create("div", "legend");
-            div.innerHTML += "<h4>Keterangan Peta</h4>";
-            div.innerHTML += "<img src='/static/microwave.png' style='width:18px; height:18px; margin-right:8px;'>Microwave/Radio<br>";
-            div.innerHTML += "<i style='background:#00bfff'></i> Kota Interkoneksi<br>";
-            div.innerHTML += "<i style='background:#ffff00'></i> Kota Layanan<br>";
-            div.innerHTML += "<hr>";
-            div.innerHTML += "<i style='background:green'></i> Okupansi < 50%<br>";
-            div.innerHTML += "<i style='background:yellow'></i> Okupansi 50–80%<br>";
-            div.innerHTML += "<i style='background:red'></i> Okupansi > 80%<br>";
-            div.innerHTML += "<i style='background:#d3f462; border:1px dashed #d3f462;'></i> Submarine Cable<br>";
+            div.innerHTML = "<h4>Keterangan Peta</h4>" +
+                "<img src='/static/microwave.png' style='width:18px; height:18px; margin-right:8px;'>Microwave/Radio<br>" +
+                "<i style='background:#00bfff'></i> Kota Interkoneksi<br>" +
+                "<i style='background:#ffff00'></i> Kota Layanan<br>" +
+                "<hr>" +
+                "<i style='background:green'></i> Okupansi < 50%<br>" +
+                "<i style='background:yellow'></i> Okupansi 50–80%<br>" +
+                "<i style='background:red'></i> Okupansi > 80%<br>" +
+                "<i style='background:#d3f462; border:1px dashed #d3f462;'></i> Submarine Cable<br>";
             return div;
         };
         legend.addTo(map);
 
-        L.control.layers(null, {
+        const layerControl = L.control.layers(null, {
             "Palapa Ring Barat": groupLayers.PalapaRingBarat.all.addTo(map),
             "Palapa Ring Tengah": groupLayers.PalapaRingTengah.all.addTo(map),
             "Palapa Ring Timur": groupLayers.PalapaRingTimur.all.addTo(map),
             "Submarine Cable": groupLayers.submarineCable
         }).addTo(map);
+
+        L.Control.HistoryButton = L.Control.extend({
+            onAdd: function(map) {
+                const a = L.DomUtil.create('a');
+                a.href = '/history';
+                a.innerHTML = 'Update History';
+                // Hapus 'leaflet-bar' yang membatasi lebar
+                const container = L.DomUtil.create('div', 'leaflet-control-history leaflet-control');
+                container.appendChild(a);
+                L.DomEvent.disableClickPropagation(container);
+                return container;
+            },
+        });
+        new L.Control.HistoryButton({ position: 'topleft' }).addTo(map);
+
+        map.addControl(new L.Control.Search({
+            layer: searchablePointsLayer,
+            propertyName: 'title',
+            marker: false,
+            textPlaceholder: 'Cari nama lokasi...',
+            textErr: 'Lokasi tidak ditemukan',
+            moveToLocation: function(latlng, title, map) {
+                map.setView(latlng, 10);
+            }
+        }));
     </script>
 </body>
 </html>

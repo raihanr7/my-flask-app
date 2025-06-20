@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update History</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; background-color: #f8f9fa; }
+        .container { max-width: 1200px; margin: 0 auto; background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        h1 { text-align: center; margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.75rem; border: 1px solid #dee2e6; text-align: left; }
+        thead { background-color: #e9ecef; }
+        tbody tr:nth-child(odd) { background-color: #f8f9fa; }
+        .btn-back { display: inline-block; margin-top: 2rem; padding: 0.5rem 1rem; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; }
+        .btn-back:hover { background-color: #5a6268; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Update History</h1>
+        <form method="GET" action="{{ url_for('history') }}" style="margin-bottom: 2rem; display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+    
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="project_name_filter">Filter berdasarkan Project Name:</label>
+                <select name="project_name_filter" id="project_name_filter" style="padding: 5px;">
+                    <option value="">-- Semua --</option>
+                    {% for name in project_names %}
+                        <option value="{{ name }}" {% if name == selected_project_name %}selected{% endif %}>
+                            {{ name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="project_filter">Filter berdasarkan Project:</label>
+                <select name="project_filter" id="project_filter" style="padding: 5px;">
+                    <option value="">-- Semua --</option>
+                    {% for proj in projects %}
+                        <option value="{{ proj }}" {% if proj == selected_project %}selected{% endif %}>
+                            {{ proj }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+        
+            <button type="submit" style="padding: 5px 15px; cursor: pointer;">Filter</button>
+        </form>
+        <table>
+            <thead>
+                <tr>
+                    <th>History ID</th>
+                    <th>Project Name</th>
+                    <th>Project</th>
+                    <th>Link Name</th>
+                    <th>Old Value (%)</th>
+                    <th>New Value (%)</th>
+                    <th>Updated at (WIB)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in history_data %}
+                <tr>
+                    <td>{{ item['History ID'] }}</td>
+                    <td>{{ item['Project Name'] }}</td>
+                    <td>{{ item['Project'] }}</td>
+                    <td>{{ item['Link Name'] }}</td>
+                    <td>
+                        {% if item['Old Value'] is not none %}
+                            {{ item['Old Value'] }} %
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item['New Value'] is not none %}
+                            {{ item['New Value'] }} %
+                        {% endif %}
+                    </td>
+                    <td>{{ item['Updated at'] }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center;">Tidak ada riwayat pembaruan yang cocok dengan filter.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <a href="/" class="btn-back">Kembali</a>
+    </div>
+</body>
+</html>
