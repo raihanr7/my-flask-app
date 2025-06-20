@@ -4,6 +4,7 @@ import psycopg2
 import json
 import pytz
 from datetime import datetime
+from urllib.parse import unquote
 
 app = Flask(__name__)
 CORS(app)
@@ -297,13 +298,12 @@ def update_table(table_name, fid):
         
         return jsonify({"error": f"Database error: {str(e)}"}), 500
 
-# âœ¨ FIXED Alternative endpoint for alur tables using Link field
-# GANTI FUNGSI LAMA DENGAN YANG INI
-# 👇👇👇
-
 # ✅ FIXED Alternative endpoint for alur tables using Link field
 @app.route('/api/update-by-link/<table_name>/<path:link>', methods=['POST'])
 def update_table_by_link(table_name, link):
+    # PERBAIKAN: Decode URL untuk mengubah %20 menjadi spasi, dll.
+    decoded_link = unquote(link)
+
     try:
         data = request.get_json()
         if not data:
@@ -311,8 +311,9 @@ def update_table_by_link(table_name, link):
 
         cur = conn.cursor()
 
-        # STEP 1: Find the FID using the link name. This is a very simple and stable query.
-        link_cleaned = " ".join(link.strip().split())
+        # STEP 1: Find the FID using the decoded link name.
+        # Menggunakan decoded_link untuk membersihkan nama link
+        link_cleaned = " ".join(decoded_link.strip().split())
         find_fid_sql = f'SELECT "fid" FROM "{table_name}" WHERE TRIM("Link") = %s LIMIT 1'
         print(f"DEBUG STEP 1: Finding FID with query: {find_fid_sql} and params: ('{link_cleaned}',)")
         
@@ -335,7 +336,7 @@ def update_table_by_link(table_name, link):
         old_values_result = cur.fetchone()
         
         if not old_values_result:
-             # This should ideally never happen if we just found the fid
+            # This should ideally never happen if we just found the fid
             cur.close()
             return jsonify({"error": f"Inconsistency: Found fid {fid} but could not retrieve its data."}), 500
 
