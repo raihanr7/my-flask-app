@@ -11,10 +11,19 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.css" />
     <script src="https://unpkg.com/leaflet-search@3.0.9/dist/leaflet-search.min.js"></script>
 
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-simple-map-screenshoter/dist/leaflet-simple-map-screenshoter.css" />
+    <script src="https://unpkg.com/leaflet-simple-map-screenshoter/dist/leaflet-simple-map-screenshoter.js"></script>
+
+    <link href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.15.0/dist/leaflet-geoman.css" rel="stylesheet">
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.15.0/dist/leaflet-geoman.min.js"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.groupedlayercontrol@0.7.0/dist/leaflet.groupedlayercontrol.min.css" />
+    <script src="https://unpkg.com/leaflet.groupedlayercontrol@0.7.0/dist/leaflet.groupedlayercontrol.min.js"></script>
+    
+
     <style>
         body { margin: 0; padding: 0; }
         #map { height: 100vh; width: 100%; }
-
         #judul-peta {
             text-align: center;
             font-size: 28px;
@@ -30,7 +39,6 @@
             padding: 4px 12px;
             border-radius: 8px;
         }
-
         .legend {
             background: white;
             padding: 10px;
@@ -46,7 +54,6 @@
             margin-right: 8px;
             opacity: 0.8;
         }
-
         #sidebar {
             position: absolute;
             top: 0;
@@ -60,11 +67,7 @@
             padding: 20px;
             overflow-y: auto;
         }
-
-        #sidebar.open {
-            right: 0;
-        }
-
+        #sidebar.open { right: 0; }
         #closeSidebar {
             position: absolute;
             top: 10px;
@@ -76,7 +79,6 @@
             cursor: pointer;
             border-radius: 4px;
         }
-
         .label-nama {
             font-size: 11px;
             font-weight: bold;
@@ -87,73 +89,156 @@
             border: 1px solid #ccc;
             box-shadow: 0 0 2px rgba(0,0,0,0.3);
         }
+        .leaflet-control-history { margin-bottom: 8px !important; }
+        .leaflet-control-search { margin-top: 0px !important; margin-bottom: 8px !important; }
 
-        /* Styles untuk sidebar dan form edit */
-        #sidebar table { width: 100%; border-collapse: collapse; }
-        #sidebar table td { padding: 6px 0; vertical-align: top; border-bottom: 1px solid #f0f0f0; }
-        #sidebar table td:first-child { width: 40%; }
-        .okupansi-value-container { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .okupansi-display { display: inline-flex; align-items: center; gap: 6px; }
-        .okupansi-edit-form { display: none; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .btn-edit { background: #2196F3; color: white; border: none; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; transition: background 0.2s; }
-        .btn-edit:hover { background: #1976D2; }
-        .edit-input { width: 70px; padding: 3px 6px; border: 1px solid #ddd; border-radius: 3px; font-size: 12px; text-align: center; }
-        .btn-save { background: #4CAF50; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; }
-        .btn-save:hover { background: #45a049; }
-        .btn-cancel { background: #f44336; color: white; border: none; padding: 3px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; font-weight: bold; }
-        .btn-cancel:hover { background: #da190b; }
-        .loading-text { color: #666; font-style: italic; font-size: 11px; }
-
-        /* Styles untuk notifikasi */
-        .notification { position: fixed; top: 60px; right: 20px; padding: 12px 20px; border-radius: 6px; font-weight: bold; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out; }
-        .notification.success { background: #4CAF50; color: white; }
-        .notification.error { background: #f44336; color: white; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .notification.fadeOut { animation: fadeOut 0.3s ease-out forwards; }
-        @keyframes fadeOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
-
-        /* Style untuk search box agar terlihat lebih baik */
-        .leaflet-control-search .search-input { height: 30px; font-size: 14px; }
-        .leaflet-control-search .search-button { height: 30px; }
-        
-        /* Style untuk tombol custom control "Update History" */
-        .leaflet-control-history a {
-            text-decoration: none;
-            padding: 8px 12px;
-            background-color: #007bff;
-            color: white !important;
-            border-radius: 4px;
-            font-family: sans-serif;
-            font-size: 14px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+        /* Supaya tombol custom seragam, tebal, biru, dan kotak */
+        .leaflet-control-history a,
+        #toggleLabelBtn {
             display: block;
-            white-space: nowrap; /* Mencegah teks turun baris */
+            background-color: #007bff !important;
+            color: #fff !important;
+            border: none !important;
+            border-radius: 5px;
+            padding: 8px 14px;
+            margin: 8px 0;
+            font-size: 15px;
+            font-weight: bold;
+            text-align: center;
+            text-decoration: none !important;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.15);
+            transition: background 0.2s;
+            cursor: pointer;
         }
-        .leaflet-control-history a:hover {
-            background-color: #0056b3;
+
+        .leaflet-control-history a:hover,
+        #toggleLabelBtn:hover {
+            background-color: #0056b3 !important;
         }
+
+        /* Khusus button edit biar biru */
+        .btn-edit {
+            background: none !important;
+            color: #007bff !important;
+            border: none !important;
+            padding: 3px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            text-decoration: underline;
+            transition: color 0.2s;
+            box-shadow: none !important;
+        }
+        .btn-edit:hover {
+            color: #0056b3 !important;
+            background: #eaf4ff !important;
+        }
+
+        .okupansi-value-container,
+        .okupansi-edit-form {
+            gap: 3px !important;
+        }
+
+        .okupansi-edit-form button {
+            font-size: 11px !important;
+            padding: 2px 6px !important;
+            min-width: 0;
+            margin: 0;
+        }
+
+        .edit-input {
+            width: 50px !important;
+            padding: 2px 4px !important;
+            font-size: 12px !important;
+        }
+
+        .okupansi-edit-form {
+            flex-wrap: nowrap !important;
+        }
+
+        .okupansi-edit-form,
+        .okupansi-display {
+            align-items: center !important;
+        }
+
+        #sidebar table td {
+            vertical-align: middle !important;
+        }
+
+        @media (max-width: 500px) {
+            #sidebar { width: 95vw !important; }
+        }
+        
+        .notification {
+            position: fixed;
+            top: 80px;
+            right: 30px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            z-index: 99999 !important;  /* Super tinggi supaya selalu di atas! */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease-out;
+            background: #4CAF50;   /* Kalau sukses */
+            color: #fff;
+        }
+        .notification.error {
+            background: #f44336 !important;
+            color: #fff !important;
+        }
+        .notification.success {
+            background: #4CAF50 !important;
+            color: #fff !important;
+        }
+
     </style>
 </head>
-
 <body>
-    <div id="judul-peta">Peta Palapa Ring & SKKL</div>
+    <div id="judul-peta">Peta Jaringan</div>
     <div id="map"></div>
-
     <div id="sidebar">
         <button id="closeSidebar">Tutup</button>
         <div id="sidebarContent"></div>
     </div>
-
+    <!-- Modal Add Marker -->
+    <div id="markerModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999; background:rgba(0,0,0,0.3);">
+        <form id="markerForm" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:28px 22px 16px 22px; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.18); min-width:260px;">
+        <h3 style="margin-bottom:8px; font-size:19px; text-align:center;">Tambah Marker</h3>
+        <label>Pilih Kategori:</label><br>
+        <select id="kategoriInput" required style="width:100%;margin-bottom:8px;">
+            <option value="">--Pilih--</option>
+            <option value="backup">Backup Link</option>
+            <option value="linksatelit">Link Satelit</option>
+            <option value="repair2024">SKKL Repair 2024</option>
+            <option value="repair2025">SKKL Repair 2025</option>
+        </select>
+        <label>Nama Site:</label><br>
+        <input type="text" id="siteInput" required style="width:100%;margin-bottom:8px;" placeholder="Nama Site"><br>
+        <label>Deskripsi:</label><br>
+        <input type="text" id="descInput" required style="width:100%;margin-bottom:12px;" placeholder="Deskripsi"><br>
+        <div style="display:flex;gap:8px;">
+            <button type="submit" style="flex:1;background:#007bff;color:#fff;padding:7px 0;border:none;border-radius:5px;font-weight:bold;">Simpan</button>
+            <button type="button" id="batalMarker" style="flex:1;background:#e0e0e0;color:#444;padding:7px 0;border:none;border-radius:5px;">Batal</button>
+        </div>
+        </form>
+    </div>
     <script>
+        // Basemap definitions
+        const baseLayers = {
+            "Google Satellite": L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                attribution: 'Google Satellite'
+            }),
+            "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            })
+        };
+        // Inisialisasi map, default pakai Google Satellite
         const map = L.map('map', {
             maxBounds: [[-12, 90], [7, 142]],
-            maxBoundsViscosity: 1.0
+            maxBoundsViscosity: 1.0,
+            layers: [baseLayers["Google Satellite"]]
         }).setView([-2.5, 120], 5);
-
-        L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-            attribution: 'Map data &copy; Google',
-            maxZoom: 20
-        }).addTo(map);
 
         const sidebar = document.getElementById("sidebar");
         const sidebarContent = document.getElementById("sidebarContent");
@@ -167,19 +252,16 @@
             sidebarContent.innerHTML = html;
             sidebar.classList.add("open");
         }
-
         function hideSidebar() {
             sidebar.classList.remove("open");
             resetEditMode();
         }
-
         function resetEditMode() {
             currentFeature = null;
             currentLayer = null;
             currentTableName = null;
             isEditMode = false;
         }
-
         function showNotification(message, type = 'success') {
             const existingNotification = document.querySelector('.notification');
             if (existingNotification) existingNotification.remove();
@@ -199,7 +281,22 @@
             order.forEach(key => {
                 const value = feature.properties[key] ?? "-";
                 if (key === "Okupansi Telkom (%)" && feature.properties.hasOwnProperty("Okupansi Telkom (%)")) {
-                    html += `<tr><td><strong>${key}</strong></td><td><div class="okupansi-value-container"><div class="okupansi-display" id="okupansiDisplay"><span>: ${value}%</span><button class="btn-edit" onclick="startEdit()">edit</button></div><div class="okupansi-edit-form" id="okupansiEditForm"><span>:</span><input type="number" id="okupansiInput" class="edit-input" min="0" max="100" step="0.01" value="${value}" /><span>%</span><button class="btn-save" onclick="saveOkupansi()">Simpan</button><button class="btn-cancel" onclick="cancelEdit()">Batal</button><span id="loadingStatus" class="loading-text" style="display: none;"></span></div></div></td></tr>`;
+                    html += `<tr><td><strong>${key}</strong></td><td style="max-width:120px;">
+                        <div class="okupansi-value-container">
+                            <div class="okupansi-display" id="okupansiDisplay">
+                                <span>: ${value}%</span>
+                                <button class="btn-edit" onclick="startEdit()">edit</button>
+                            </div>
+                            <div class="okupansi-edit-form" id="okupansiEditForm" style="display: none;">
+                                <span>:</span>
+                                <input type="number" id="okupansiInput" class="edit-input" min="0" max="100" step="0.01" value="${value}" />
+                                <span>%</span>
+                                <button class="btn-save" onclick="saveOkupansi()">Simpan</button>
+                                <button class="btn-cancel" onclick="cancelEdit()">Batal</button>
+                                <span id="loadingStatus" class="loading-text" style="display: none;"></span>
+                            </div>
+                        </div>
+                    </td></tr>`;
                 } else {
                     html += `<tr><td><strong>${key}</strong></td><td>: ${value}</td></tr>`;
                 }
@@ -207,7 +304,6 @@
             html += "</table>";
             return html;
         }
-
         function startEdit() {
             if (!currentFeature || !currentTableName) return;
             isEditMode = true;
@@ -215,7 +311,6 @@
             document.getElementById('okupansiEditForm').style.display = 'flex';
             document.getElementById('okupansiInput').focus();
         }
-
         function cancelEdit() {
             document.getElementById('okupansiDisplay').style.display = 'flex';
             document.getElementById('okupansiEditForm').style.display = 'none';
@@ -223,7 +318,6 @@
             isEditMode = false;
             if (currentFeature) document.getElementById('okupansiInput').value = currentFeature.properties['Okupansi Telkom (%)'] || '';
         }
-
         async function saveOkupansi() {
             if (!currentFeature || !currentTableName) return;
             const okupansiValue = document.getElementById('okupansiInput').value;
@@ -231,8 +325,19 @@
             let idValue = currentFeature.properties.Link;
             let apiEndpoint = `/api/update-by-link/${currentTableName}/${encodeURIComponent(idValue)}`;
 
+            // Validasi input
             if (!idValue) { showNotification('ID/Link tidak ditemukan untuk update', 'error'); return; }
-            if (okupansiValue === '' || isNaN(okupansiValue) || okupansiValue < 0 || okupansiValue > 100) { showNotification('Nilai okupansi harus antara 0-100', 'error'); return; }
+            if (okupansiValue === '' || isNaN(okupansiValue) || okupansiValue < 0 || okupansiValue > 100) {
+                showNotification('Nilai okupansi harus antara 0-100', 'error'); return;
+            }
+
+            // ==== POPUP KONFIRMASI ====
+            const konfirmasi = window.confirm(`Apakah Anda yakin ingin mengubah Okupansi menjadi ${okupansiValue}%?`);
+            if (!konfirmasi) {
+                showNotification('Perubahan dibatalkan.', 'error');
+                return;
+            }
+            // ==========================
 
             statusSpan.style.display = 'inline';
             statusSpan.textContent = 'Menyimpan...';
@@ -289,7 +394,6 @@
                 }, 100);
             }
         }
-
         document.getElementById("closeSidebar").addEventListener("click", hideSidebar);
         map.on("click", hideSidebar);
 
@@ -299,9 +403,8 @@
             else if (feature.properties.Keterangan === "Kota Layanan") warna = "#ffff00";
             return { radius: 6, fillColor: warna, color: "#000", weight: 1, opacity: 1, fillOpacity: 0.8 };
         }
-
         function styleAlur(feature) {
-            if (feature.properties.Description) return { color: "#d3f462", weight: 2, dashArray: "4 4", opacity: 0.7 };
+            if (feature.properties.Description) return { color: "#ff9800", weight: 2, opacity: 0.7 };
             const okupansi = parseFloat(feature.properties["Okupansi Telkom (%)"]);
             let warna = "gray";
             if (!isNaN(okupansi)) {
@@ -311,17 +414,34 @@
             }
             return { color: warna, weight: 3, opacity: 0.8 };
         }
-
         const groupLayers = {
             'PalapaRingBarat': { alur: L.layerGroup(), point: L.layerGroup(), all: L.layerGroup() },
             'PalapaRingTengah': { alur: L.layerGroup(), point: L.layerGroup(), all: L.layerGroup() },
             'PalapaRingTimur': { alur: L.layerGroup(), point: L.layerGroup(), all: L.layerGroup() },
-            'submarineCable': L.layerGroup().addTo(map)
+            'submarineCable': L.layerGroup()
         };
-        
         const searchablePointsLayer = L.layerGroup();
+        const BASE = "/api";
 
-        const BASE = "/api"; 
+        const skklRepairLayer = L.layerGroup();
+        const skklRepair2024Layer = L.layerGroup();
+        const backupLinkLayer = L.layerGroup();
+        const linkSatelitLayer = L.layerGroup();
+
+
+        // LABEL ON/OFF LOGIC
+        let labelOn = true;
+        let allLabelLayers = [];
+        function toggleLabels() {
+            labelOn = !labelOn;
+            allLabelLayers.forEach(l => {
+                if (l.getTooltip()) {
+                    if (labelOn) l.openTooltip();
+                    else l.closeTooltip();
+                }
+            });
+            document.getElementById('toggleLabelBtn').textContent = labelOn ? 'Matikan Label' : 'Nyalakan Label';
+        }
 
         function loadGeoJsonFromAPI(url, type = 'point', targetGroup) {
             fetch(url)
@@ -329,7 +449,7 @@
                 .then(data => {
                     targetGroup.clearLayers();
                     const kotaMicrowave = ["Sami", "Burmeso", "Elelim", "Wamena", "Kenyam", "Sumohai", "Dekai", "Oksibil", "Kobagma", "Tiom", "Karubaga", "Mulia", "Kepi Tower", "Ilaga", "Sugapa"];
-                    const microwaveIcon = L.icon({ iconUrl: '/static/microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
+                    const microwaveIcon = L.icon({ iconUrl: '/static/images/microwave.png', iconSize: [24, 24], iconAnchor: [12, 12], popupAnchor: [0, -10] });
                     const layer = L.geoJSON(data, {
                         pointToLayer: (feature, latlng) => {
                             if (type === 'point' && kotaMicrowave.includes(feature.properties.Nama)) return L.marker(latlng, { icon: microwaveIcon });
@@ -351,9 +471,12 @@
                                 else if (layer.getLatLng) map.setView(layer.getLatLng(), 9);
                             });
                             if (type === 'point' && feature.properties.Nama) {
-                                layer.bindTooltip(feature.properties.Nama, { permanent: true, direction: 'top', className: 'label-nama' }).openTooltip();
+                                layer.bindTooltip(feature.properties.Nama, { permanent: true, direction: 'top', className: 'label-nama' });
+                                if (labelOn) layer.openTooltip();
+                                else layer.closeTooltip();
+                                allLabelLayers.push(layer);
                                 layer.options.title = feature.properties.Nama;
-                                searchablePointsLayer.addLayer(layer);
+                                
                             }
                         }
                     });
@@ -362,8 +485,31 @@
                 .catch(err => console.error("Failed to load:", url, err));
         }
 
+        const repairIcon = L.icon({
+            iconUrl: '/static/images/repair.png',
+            iconSize: [28, 28], // sesuaikan ukuran
+            iconAnchor: [14, 14], // titik tengah icon
+            popupAnchor: [0, -14] // popup muncul di atas icon
+        });
+
+        const backupLinkIcon = L.icon({
+            iconUrl: '/static/images/backuplink.png',
+            iconSize: [28, 28], // sesuaikan ukuran
+            iconAnchor: [14, 14],
+            popupAnchor: [0, -14]
+        });
+
+        const linkSatelitIcon = L.icon({
+            iconUrl: '/static/images/linksatelit.png',
+            iconSize: [28, 28], // sesuaikan dengan ukuran PNG
+            iconAnchor: [14, 14],
+            popupAnchor: [0, -14]
+        });
+
+
         function refreshAllLayers() {
             searchablePointsLayer.clearLayers();
+            allLabelLayers = [];
             const projects = ['Barat', 'Tengah', 'Timur'];
             projects.forEach(proj => {
                 const group = groupLayers[`PalapaRing${proj}`];
@@ -377,15 +523,116 @@
             });
             loadGeoJsonFromAPI(`${BASE}/alur/submarine`, "alur", groupLayers.submarineCable);
         }
+        
+        function loadSKKLRepair2024Layer() {
+            fetch('/api/repair/skkl2024')
+                .then(res => res.json())
+                .then(data => {
+                    skklRepair2024Layer.clearLayers();
+                    const layer = L.geoJSON(data, {
+                        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: repairIcon }),
+                        onEachFeature: function (feature, layer) {
+                            feature.properties.kategori = 'repair2024';
+                            layer.bindPopup(
+                                `<b>${feature.properties.name || '-'}</b><br>${feature.properties.description || ''}`
+                                + `<br><button onclick="hapusMarker('repair2024', '${feature.properties.id}')"
+                                style='margin-top:6px;background:#f44336;color:#fff;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:13px;'>Hapus</button>`
+                            );
+                        }
+                    });
+                    layer.addTo(skklRepair2024Layer);
+                });
+        }
+        function loadSKKLRepairLayer() {
+            fetch('/api/repair/skkl')
+                .then(res => res.json())
+                .then(data => {
+                    skklRepairLayer.clearLayers();
+                    const layer = L.geoJSON(data, {
+                        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: repairIcon }),
+                        onEachFeature: function (feature, layer) {
+                            feature.properties.kategori = 'repair2025';
+                            layer.bindPopup(
+                                `<b>${feature.properties.name || '-'}</b><br>${feature.properties.description || ''}`
+                                + `<br><button onclick="hapusMarker('repair2025', '${feature.properties.id}')"
+                                style='margin-top:6px;background:#f44336;color:#fff;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:13px;'>Hapus</button>`
+                            );
+                        }
+                    });
+                    layer.addTo(skklRepairLayer);
+                });
+        }
 
+
+
+        function loadBackupLinkLayer() {
+            fetch('/api/backup-link')
+                .then(res => res.json())
+                .then(data => {
+                    backupLinkLayer.clearLayers();
+                    const layer = L.geoJSON(data, {
+                        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: backupLinkIcon }),
+                        onEachFeature: function (feature, layer) {
+                            console.log('ID GEOJSON:', feature.properties.id);
+                            feature.properties.kategori = 'backup';
+                            layer.bindPopup(
+                                `<b>${feature.properties.site || '-'}</b><br>${feature.properties.description || ''}`
+                                + `<br><button onclick="hapusMarker('backup', '${feature.properties.id}')"
+                                style='margin-top:6px;background:#f44336;color:#fff;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:13px;'>Hapus</button>`
+                            );
+                        }
+                    });
+                    layer.addTo(backupLinkLayer);
+                });
+        }
+
+
+        function loadLinkSatelitLayer() {
+            fetch('/api/link-satelit')
+                .then(res => res.json())
+                .then(data => {
+                    linkSatelitLayer.clearLayers();
+                    const layer = L.geoJSON(data, {
+                        pointToLayer: (feature, latlng) => L.marker(latlng, { icon: linkSatelitIcon }),
+                        onEachFeature: function (feature, layer) {
+                            feature.properties.kategori = 'linksatelit';
+                            layer.bindPopup(
+                                `<b>${feature.properties.site || '-'}</b><br>${feature.properties.description || ''}`
+                                + `<br><button onclick="hapusMarker('linksatelit', '${feature.properties.id}')"
+                                style='margin-top:6px;background:#f44336;color:#fff;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:13px;'>Hapus</button>`
+                            );
+                        }
+                    });
+                    layer.addTo(linkSatelitLayer);
+                });
+        }
+
+        
+        
+        
+        loadLinkSatelitLayer();
+        setInterval(loadLinkSatelitLayer, 30000);
+
+        loadSKKLRepairLayer();
+        setInterval(loadSKKLRepairLayer, 30000);
+
+        loadBackupLinkLayer();
+        setInterval(loadBackupLinkLayer, 30000);
+
+        loadSKKLRepair2024Layer();
+        setInterval(loadSKKLRepair2024Layer, 30000);
+        
         refreshAllLayers();
         setInterval(refreshAllLayers, 30000);
+        
 
+
+        // LEGEND
         const legend = L.control({ position: "bottomright" });
         legend.onAdd = function () {
             const div = L.DomUtil.create("div", "legend");
             div.innerHTML = "<h4>Keterangan Peta</h4>" +
-                "<img src='/static/microwave.png' style='width:18px; height:18px; margin-right:8px;'>Microwave/Radio<br>" +
+                "<img src='/static/images/microwave.png' style='width:18px; height:18px; margin-right:8px;'>Microwave/Radio<br>" +
                 "<i style='background:#00bfff'></i> Kota Interkoneksi<br>" +
                 "<i style='background:#ffff00'></i> Kota Layanan<br>" +
                 "<hr>" +
@@ -397,19 +644,24 @@
         };
         legend.addTo(map);
 
-        const layerControl = L.control.layers(null, {
-            "Palapa Ring Barat": groupLayers.PalapaRingBarat.all.addTo(map),
-            "Palapa Ring Tengah": groupLayers.PalapaRingTengah.all.addTo(map),
-            "Palapa Ring Timur": groupLayers.PalapaRingTimur.all.addTo(map),
-            "Submarine Cable": groupLayers.submarineCable
+        // LAYER CONTROL (baseLayers & overlays)
+        L.control.layers(baseLayers, {
+            "Palapa Ring Barat": groupLayers.PalapaRingBarat.all,
+            "Palapa Ring Tengah": groupLayers.PalapaRingTengah.all,
+            "Palapa Ring Timur": groupLayers.PalapaRingTimur.all,
+            "Submarine Cable": groupLayers.submarineCable,
+            "SKKL Repair 2025": skklRepairLayer,
+            "SKKL Repair 2024": skklRepair2024Layer,
+            "Backup Link": backupLinkLayer,
+            "Link Satelit": linkSatelitLayer
         }).addTo(map);
 
+        // UPDATE HISTORY CONTROL
         L.Control.HistoryButton = L.Control.extend({
             onAdd: function(map) {
                 const a = L.DomUtil.create('a');
                 a.href = '/history';
                 a.innerHTML = 'Update History';
-                // Hapus 'leaflet-bar' yang membatasi lebar
                 const container = L.DomUtil.create('div', 'leaflet-control-history leaflet-control');
                 container.appendChild(a);
                 L.DomEvent.disableClickPropagation(container);
@@ -418,7 +670,27 @@
         });
         new L.Control.HistoryButton({ position: 'topleft' }).addTo(map);
 
+        // TOGGLE LABEL CONTROL (baru)
+        L.Control.ToggleLabel = L.Control.extend({
+            onAdd: function(map) {
+                const container = L.DomUtil.create('div', 'leaflet-control-history leaflet-control');
+                const btn = L.DomUtil.create('a', '', container);
+                btn.id = 'toggleLabelBtn';
+                btn.innerHTML = 'Matikan Label';
+                btn.href = '#';
+                btn.onclick = function(e) {
+                    e.preventDefault();
+                    toggleLabels();
+                };
+                return container;
+            },
+            onRemove: function(map) {}
+        });
+        new L.Control.ToggleLabel({ position: 'topleft' }).addTo(map);
+
+        // SEARCH CONTROL
         map.addControl(new L.Control.Search({
+            position: 'topleft',
             layer: searchablePointsLayer,
             propertyName: 'title',
             marker: false,
@@ -428,6 +700,174 @@
                 map.setView(latlng, 10);
             }
         }));
+        
+        map.pm.addControls({
+            position: 'topleft',
+            drawCircle: false,
+            drawCircleMarker: false,
+            drawMarker: true,
+            drawRectangle: false,
+            drawPolygon: false,
+            drawText: false,
+            drawPolyline: true,
+            editMode: false,
+            dragMode: true,
+            cutPolygon: false,
+            removalMode: true,
+            rotateMode: false
+        });
+
+        let tempMarker = null;
+        let tempLatLng = null;
+
+        map.on('pm:create', function(e) {
+            if (e.layer instanceof L.Marker) {
+                tempMarker = e.layer;
+                tempLatLng = e.layer.getLatLng();
+                document.getElementById('markerModal').style.display = '';
+                document.getElementById('kategoriInput').value = '';
+                document.getElementById('siteInput').value = '';
+                document.getElementById('descInput').value = '';
+            }
+            // Polyline tetap menampilkan jarak
+            if (e.layer instanceof L.Polyline) {
+                var latlngs = e.layer.getLatLngs();
+                var total = 0;
+                for (var i = 1; i < latlngs.length; i++) {
+                    total += latlngs[i-1].distanceTo(latlngs[i]);
+                }
+                var label = "Jarak total: " + (total/1000).toFixed(2) + " km";
+                e.layer.bindPopup(label).openPopup();
+            }
+        });
+
+        document.getElementById('markerForm').onsubmit = function(ev) {
+            ev.preventDefault();
+            const kategori = document.getElementById('kategoriInput').value;
+            const site = document.getElementById('siteInput').value;
+            const description = document.getElementById('descInput').value;
+            if (!kategori || !site || !description) {
+                alert('Semua field wajib diisi.');
+                return;
+            }
+            fetch('/api/tambah-marker', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    kategori,
+                    lat: tempLatLng.lat,
+                    lng: tempLatLng.lng,
+                    site,
+                    description
+                })
+            }).then(r => r.json()).then(data => {
+                document.getElementById('markerModal').style.display = 'none';
+                if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+                if (data.success) {
+                    alert('Marker berhasil ditambah!');
+                    if (kategori === 'linksatelit') loadLinkSatelitLayer();
+                    else if (kategori === 'backup') loadBackupLinkLayer();
+                    else if (kategori === 'repair2024') loadSKKLRepair2024Layer();
+                    else if (kategori === 'repair2025') loadSKKLRepairLayer();
+                } else {
+                    alert('Gagal menambah marker!');
+                }
+            }).catch(err => {
+                alert('Gagal koneksi ke server!');
+            });
+        };
+
+        document.getElementById('batalMarker').onclick = function() {
+        document.getElementById('markerModal').style.display = 'none';
+            if (tempMarker) { map.removeLayer(tempMarker); tempMarker = null; }
+        };
+
+
+        map.on('pm:remove', function(e) {
+            // Cek kalau yang dihapus marker
+            if (e.layer instanceof L.Marker) {
+                // Ambil kategori dan id marker
+                // Pastikan property sudah di-set waktu loader geojson
+                const feature = e.layer.feature;
+                if (!feature || !feature.properties || !feature.properties.id) return;
+                let kategori = null;
+                // Deteksi kategori marker
+                if (feature.properties.site && !feature.properties.name) {
+                    // Backup Link atau Link Satelit
+                    // (Harus pakai loader GeoJSON yang nambah kategori)
+                    // Bisa cek dengan if (e.target === backupLinkLayer) dsb, atau tambahkan field kategori di properties
+                    // Cara termudah, tambahkan kategori di properties waktu loader GeoJSON!
+                    kategori = feature.properties.kategori; // set ini waktu loader
+                } else if (feature.properties.name) {
+                    if (feature.properties.kategori) kategori = feature.properties.kategori;
+                    else kategori = feature.properties.name.includes('2024') ? 'repair2024' : 'repair2025'; // fallback
+                }
+                if (!kategori) {
+                    alert('Kategori marker tidak diketahui. Tidak bisa hapus dari database!');
+                    return;
+                }
+                // Konfirmasi
+                if (!confirm('Yakin ingin menghapus marker ini dari database?')) return;
+                // Hapus dari database via AJAX
+                fetch('/api/delete-marker', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ kategori, id: feature.properties.id })
+                }).then(r => r.json()).then(data => {
+                    if (data.success) {
+                        alert('Marker berhasil dihapus dari database!');
+                        // Refresh layer sesuai kategori
+                        if (kategori === 'linksatelit') loadLinkSatelitLayer();
+                        else if (kategori === 'backup') loadBackupLinkLayer();
+                        else if (kategori === 'repair2024') loadSKKLRepair2024Layer();
+                        else if (kategori === 'repair2025') loadSKKLRepairLayer();
+                    } else {
+                        alert('Gagal hapus marker dari database!');
+                    }
+                });
+            }
+        });
+
+        window.hapusMarker = function(kategori, id) {
+            if (!confirm('Yakin ingin menghapus marker ini?')) return;
+            fetch('/api/delete-marker', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ kategori, id })
+            }).then(r => r.json()).then(data => {
+                if (data.success) {
+                    alert('Berhasil dihapus!');
+                    if (kategori === 'linksatelit') loadLinkSatelitLayer();
+                    else if (kategori === 'backup') loadBackupLinkLayer();
+                    else if (kategori === 'repair2024') loadSKKLRepair2024Layer();
+                    else if (kategori === 'repair2025') loadSKKLRepairLayer();
+                } else {
+                    alert('Gagal hapus marker!');
+                }
+            });
+        };
+
+
+
+
+        // SCREENSHOTTER
+        var screenshoter = L.simpleMapScreenshoter({
+            cropImageByInnerWH: true,
+            hidden: false,
+            preventDownload: false,
+            hideElementsWithSelectors: ['body > *:not(#map)'],
+            domtoimageOptions: { 
+                bgcolor: '#ffffff',
+                style: {
+                    transform: 'scale(1)',
+                    transformOrigin: 'top left'
+                } 
+            },
+            screenName: 'skkl-map',
+            position: 'topright'
+        }).addTo(map);
+    
+    
     </script>
 </body>
 </html>

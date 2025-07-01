@@ -5,6 +5,7 @@ import json
 import pytz
 from datetime import datetime
 from urllib.parse import unquote
+import uuid
 
 app = Flask(__name__)
 CORS(app)
@@ -46,6 +47,22 @@ FIELD_ORDER = {
     ],
     "SubmarineCable_Alur": [
         "Link", "Description"
+    ],
+
+    "SKKL_Repair_2025_BY_DCS": [
+        "name", "description"
+    ],
+
+    "SKKL_Repair_2024_BY_DCS": [
+        "name", "description"
+    ],
+
+    "Backup Link": [
+        "site", "description"
+    ],
+
+    "Link_Satelit": [
+        "site", "description"
     ]
 }
 
@@ -77,6 +94,9 @@ def get_geojson_from_table(table_name):
             # Always include fid for update operations, even if not in display order
             if 'fid' in full_props and 'fid' not in props:
                 props['fid'] = full_props['fid']
+
+            if 'id' in full_props and 'id' not in props:
+                props['id'] = full_props['id']  
 
             # Check if we have geometry data
             if len(row) == 0:
@@ -149,6 +169,7 @@ def record_update_history(project_name, project, link_name, old_value, new_value
 def index():
     return render_template('Peta Palapa Ring Semi-Realtime.html')  # Menyajikan file HTML
 
+
 # Endpoint GET data
 @app.route('/api/point/barat')
 def point_barat():
@@ -177,6 +198,101 @@ def alur_timur():
 @app.route('/api/alur/submarine')
 def alus_submarine():
     return jsonify(get_geojson_from_table("SubmarineCable_Alur"))
+
+@app.route('/api/repair/skkl')
+def repair_skkl():
+    return jsonify(get_geojson_from_table("SKKL_Repair_2025_BY_DCS"))
+
+
+
+@app.route('/api/repair/skkl2024')
+def repair_skkl2024():
+    return jsonify(get_geojson_from_table("SKKL_Repair_2024_BY_DCS"))
+
+
+@app.route('/api/backup-link')
+def backup_link():
+    return jsonify(get_geojson_from_table("Backup Link"))
+
+
+
+@app.route('/api/link-satelit')
+def link_satelit():
+    return jsonify(get_geojson_from_table("Link_Satelit"))
+
+
+
+@app.route('/api/tambah-marker', methods=['POST'])
+def tambah_marker():
+    data = request.json
+    kategori = data.get('kategori')
+    lat, lng = data.get('lat'), data.get('lng')
+    site = data.get('site')
+    description = data.get('description')
+    new_id = uuid.uuid4().hex.upper()  # Selalu generate UUID
+
+    if kategori == 'backup':
+        table_name = "Backup Link"
+        field_name = "site"
+    elif kategori == 'linksatelit':
+        table_name = "Link_Satelit"
+        field_name = "site"
+    elif kategori == 'repair2024':
+        table_name = "SKKL_Repair_2024_BY_DCS"
+        field_name = "name"
+    elif kategori == 'repair2025':
+        table_name = "SKKL_Repair_2025_BY_DCS"
+        field_name = "name"
+    else:
+        return {"success": False, "error": "Kategori tidak dikenal"}, 400
+
+    try:
+        cur = conn.cursor()
+        geom_wkt = f"POINT({lng} {lat})"
+        # SEMUA tabel diinsert kolom id, field_name, description, geom
+        sql = f'INSERT INTO "{table_name}" ("id", "{field_name}", "description", "geom") VALUES (%s, %s, %s, ST_GeomFromText(%s, 4326))'
+        cur.execute(sql, (new_id, site, description, geom_wkt))
+        conn.commit()
+        cur.close()
+        return {"success": True}
+    except Exception as e:
+        conn.rollback()
+        return {"success": False, "error": str(e)}, 500
+
+
+@app.route('/api/delete-marker', methods=['POST'])
+def delete_marker():
+    data = request.json
+    kategori = data.get('kategori')
+    marker_id = data.get('id')
+    if not kategori or not marker_id:
+        return {"success": False, "error": "Invalid data"}, 400
+
+    if kategori == 'backup':
+        table_name = "Backup Link"
+    elif kategori == 'linksatelit':
+        table_name = "Link_Satelit"
+    elif kategori == 'repair2024':
+        table_name = "SKKL_Repair_2024_BY_DCS"
+    elif kategori == 'repair2025':
+        table_name = "SKKL_Repair_2025_BY_DCS"
+    else:
+        return {"success": False, "error": "Kategori tidak dikenal"}, 400
+
+    try:
+        cur = conn.cursor()
+        print('HAPUS MARKER:', table_name, marker_id)
+        sql = f'DELETE FROM "{table_name}" WHERE id=%s'
+        cur.execute(sql, (marker_id,))
+        print('ROWCOUNT:', cur.rowcount)
+        conn.commit()
+        cur.close()
+        return {"success": True}
+    except Exception as e:
+        conn.rollback()
+        return {"success": False, "error": str(e)}, 500
+
+
 
 # âœ¨ Endpoint dinamis untuk update data dan "Updated at"
 @app.route('/api/update/<table_name>/<int:fid>', methods=['POST'])
