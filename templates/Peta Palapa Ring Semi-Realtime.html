@@ -1,3 +1,5 @@
+<!-- INi syntax peta ya ya ya-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -846,6 +848,43 @@
                 }
             });
         };
+
+        map.on('pm:dragend', async e => {
+        // Hanya tangani marker
+            if (!(e.layer instanceof L.Marker)) return;
+
+            const { feature } = e.layer;
+            if (!feature || !feature.properties || !feature.properties.id) return;
+
+            // Kategori sudah diset saat loader GeoJSON
+            const kategori = feature.properties.kategori;   // backup / linksatelit / …
+            const { lat, lng } = e.layer.getLatLng();
+
+            try {
+                const res = await fetch('/api/update-marker', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ kategori, id: feature.properties.id, lat, lng })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert('Posisi marker berhasil diperbarui!');
+
+                    // === REFRESH LAYER SESUAI KATEGORI ===
+                    if (kategori === 'linksatelit')       loadLinkSatelitLayer();
+                    else if (kategori === 'backup')       loadBackupLinkLayer();
+                    else if (kategori === 'repair2024')   loadSKKLRepair2024Layer();
+                    else if (kategori === 'repair2025')   loadSKKLRepairLayer();  // 2025
+                    // =====================================
+                } else {
+                    alert('Gagal update lokasi di database: ' + (data.error || ''));
+                }
+            } catch (err) {
+                alert('Gagal koneksi ke server');
+            }
+        });
+
 
 
 

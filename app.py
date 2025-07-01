@@ -293,6 +293,41 @@ def delete_marker():
         return {"success": False, "error": str(e)}, 500
 
 
+@app.route('/api/update-marker', methods=['POST'])
+def update_marker():
+    data = request.json
+    kategori = data.get('kategori')
+    marker_id = data.get('id')
+    lat, lng = data.get('lat'), data.get('lng')
+
+    if not (kategori and marker_id and lat and lng):
+        return {"success": False, "error": "Incomplete data"}, 400
+
+    table_map = {
+        'backup': 'Backup Link',
+        'linksatelit': 'Link_Satelit',
+        'repair2024': 'SKKL_Repair_2024_BY_DCS',
+        'repair2025': 'SKKL_Repair_2025_BY_DCS'
+    }
+    table_name = table_map.get(kategori)
+    if not table_name:
+        return {"success": False, "error": "Kategori tidak dikenal"}, 400
+
+    try:
+        cur = conn.cursor()
+        # Update kolom geom dengan titik baru
+        sql = f'''UPDATE "{table_name}"
+                  SET geom = ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                  WHERE id = %s'''
+        cur.execute(sql, (lng, lat, marker_id))
+        conn.commit()
+        cur.close()
+        return {"success": True}
+    except Exception as e:
+        conn.rollback()
+        return {"success": False, "error": str(e)}, 500
+
+
 
 # âœ¨ Endpoint dinamis untuk update data dan "Updated at"
 @app.route('/api/update/<table_name>/<int:fid>', methods=['POST'])
