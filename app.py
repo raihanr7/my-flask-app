@@ -96,8 +96,11 @@ def get_geojson_from_table(table_name):
                 props['fid'] = full_props['fid']
 
             if 'id' in full_props and 'id' not in props:
-                props['id'] = full_props['id']  
+                props['id'] = full_props['id']
 
+            if 'Project' in full_props and 'Project' not in props:
+                props['Project'] = full_props['Project']
+  
             # Check if we have geometry data
             if len(row) == 0:
                 print(f"Warning: Empty row {i} in table {table_name}")
@@ -129,46 +132,33 @@ def get_geojson_from_table(table_name):
     return geojson
 
 def record_update_history(project_name, project, link_name, old_value, new_value):
-    """Mencatat perubahan ke tabel Update History dengan nama kolom yang benar."""
     try:
         cur = conn.cursor()
-        # PASTIKAN NAMA KOLOM DI SINI TIDAK MENGGUNAKAN (%)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS "Update History" (
-                "History ID" SERIAL PRIMARY KEY,
-                "Project Name" VARCHAR(255),
-                "Project" VARCHAR(255),
-                "Link Name" VARCHAR(255),
-                "Old Value" NUMERIC,
-                "New Value" NUMERIC,
-                "Updated at" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-            )
-        """)
-        conn.commit()
-        
-        old_value_param = float(old_value) if old_value is not None and str(old_value) != "" else None
-        new_value_param = float(new_value) if new_value is not None and str(new_value) != "" else None
-        
-        # PASTIKAN NAMA KOLOM DI SINI JUGA TIDAK MENGGUNAKAN (%)
+
+        old_value_param = None if old_value in [None, '', 'None'] else float(old_value)
+        new_value_param = None if new_value in [None, '', 'None'] else float(new_value)
+
         sql = '''
-            INSERT INTO "Update History" 
+            INSERT INTO "Update History"
             ("Project Name", "Project", "Link Name", "Old Value", "New Value", "Updated at")
             VALUES (%s, %s, %s, %s, %s, NOW())
         '''
         cur.execute(sql, (project_name, project, link_name, old_value_param, new_value_param))
+
         conn.commit()
         cur.close()
         return True
+
     except Exception as e:
-        print(f"ERROR recording history: {str(e)}")
+        print("DEBUG ERROR HISTORY INSERT:", str(e))
         conn.rollback()
         return False
+
 
 # Rute untuk halaman utama (homepage)
 @app.route('/')
 def index():
     return render_template('Peta Palapa Ring Semi-Realtime.html')  # Menyajikan file HTML
-
 
 # Endpoint GET data
 @app.route('/api/point/barat')
@@ -325,6 +315,117 @@ def update_marker():
         return {"success": True}
     except Exception as e:
         conn.rollback()
+        return {"success": False, "error": str(e)}, 500
+
+@app.route('/api/update-okupansi', methods=['POST'])
+def update_okupansi():
+    data = request.json or {}
+    kategori = data.get('kategori')     
+    scope    = data.get('scope')        
+    value    = data.get('value')        
+    link_name = data.get('link_name', '').strip()
+    project   = data.get('project')
+
+    table_map = {
+        'barat':  'Palapa_Ring_Barat_Alur',
+        'tengah': 'Palapa_Ring_Tengah_Alur',
+        'timur':  'Palapa_Ring_Timur_Alur'
+    }
+
+    table = table_map.get(kategori)
+    if not table:
+        return {"success": False, "error": "Kategori tidak valid"}, 400
+    if scope not in ('link', 'project'):
+        return {"success": False, "error": "Scope tidak valid"}, 400
+    if value is None:
+        return {"success": False, "error": "Value kosong"}, 400
+
+    try:
+        with conn.cursor() as cur:
+
+            if scope == 'link':
+                sql = '''
+                    SELECT "Okupansi Telkom (%%)", "Project", "Link"
+                    FROM "{}"
+                    WHERE TRIM("Link") = %s
+                    LIMIT 1
+                '''.format(table)
+                cur.execute(sql, (link_name,))
+                result = cur.fetchone()
+                print("DEBUG RESULT:", result)
+
+                if not result or len(result) < 3:
+                    return {"success": False, "error": f'Data untuk link "{link_name}" tidak ditemukan'}, 404
+
+                old_value, project_code, link_from_db = result
+
+                project_name = {
+                    'barat': 'Palapa Ring Barat',
+                    'tengah': 'Palapa Ring Tengah',
+                    'timur': 'Palapa Ring Timur'
+                }.get(kategori, 'Unknown')
+
+                sql_update = '''
+                    UPDATE "{}"
+                    SET "Okupansi Telkom (%%)" = %s, "Updated at" = NOW()
+                    WHERE TRIM("Link") = %s
+                '''.format(table)
+                cur.execute(sql_update, (value, link_name))
+
+                record_update_history(
+                    project_name=project_name,
+                    project=project_code,
+                    link_name=link_from_db,
+                    old_value=old_value,
+                    new_value=value
+                )
+
+
+
+
+            elif scope == 'project':
+                # 1. Ambil nama project_name berdasarkan kode project
+                sql = f'''
+                    SELECT DISTINCT "Project Name"
+                    FROM "{table}"
+                    WHERE "Project" = %s
+                    LIMIT 1
+                '''
+                cur.execute(sql, (project,))
+                result = cur.fetchone()
+
+                if not result or not result[0]:
+                    return {"success": False, "error": f'Project Name tidak ditemukan untuk project "{project}"'}, 404
+
+                project_name = result[0]
+
+                # 2. Update semua link dalam satu project
+                sql_update = f'''
+                    UPDATE "{table}"
+                    SET "Okupansi Telkom (%%)" = %s, "Updated at" = NOW()
+                    WHERE "Project" = %s
+                '''
+                cur.execute(sql_update, (value, project))
+
+                if cur.rowcount == 0:
+                    return {"success": False, "error": f'Tidak ada data untuk project "{project}"'}, 404
+
+                # 3. Catat ke histori
+                record_update_history(
+                    project_name=project_name,
+                    project=project,
+                    link_name='Seluruh Project',
+                    old_value=None,
+                    new_value=value
+                )
+
+        conn.commit()
+        return {"success": True}
+
+    except Exception as e:
+        conn.rollback()
+        import traceback
+        traceback.print_exc()
         return {"success": False, "error": str(e)}, 500
 
 

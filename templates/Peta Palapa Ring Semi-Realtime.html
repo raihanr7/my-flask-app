@@ -22,6 +22,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.groupedlayercontrol@0.7.0/dist/leaflet.groupedlayercontrol.min.css" />
     <script src="https://unpkg.com/leaflet.groupedlayercontrol@0.7.0/dist/leaflet.groupedlayercontrol.min.js"></script>
     
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 
     <style>
         body { margin: 0; padding: 0; }
@@ -320,49 +322,75 @@
             isEditMode = false;
             if (currentFeature) document.getElementById('okupansiInput').value = currentFeature.properties['Okupansi Telkom (%)'] || '';
         }
+        
         async function saveOkupansi() {
             if (!currentFeature || !currentTableName) return;
+
             const okupansiValue = document.getElementById('okupansiInput').value;
             const statusSpan = document.getElementById('loadingStatus');
-            let idValue = currentFeature.properties.Link;
-            let apiEndpoint = `/api/update-by-link/${currentTableName}/${encodeURIComponent(idValue)}`;
+
+            const linkName = currentFeature.properties["Link"].trim(); // ambil link
+            const project = currentFeature.properties["Project"];
+            const kategori = currentTableName.includes('Barat') ? 'barat' :
+                            currentTableName.includes('Tengah') ? 'tengah' : 'timur';
+
+
+            console.log("Nama Project:", project);
+            console.log("Nama Link:", linkName);
+            console.log("Kategori:", kategori);
 
             // Validasi input
-            if (!idValue) { showNotification('ID/Link tidak ditemukan untuk update', 'error'); return; }
             if (okupansiValue === '' || isNaN(okupansiValue) || okupansiValue < 0 || okupansiValue > 100) {
-                showNotification('Nilai okupansi harus antara 0-100', 'error'); return;
+                showNotification('Nilai okupansi harus antara 0-100', 'error');
+                return;
             }
 
-            // ==== POPUP KONFIRMASI ====
-            const konfirmasi = window.confirm(`Apakah Anda yakin ingin mengubah Okupansi menjadi ${okupansiValue}%?`);
-            if (!konfirmasi) {
+            const scopeChoice = await Swal.fire({
+                title: `Ubah Okupansi jadi ${okupansiValue}%`,
+                text: 'Terapkan perubahan ke mana?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Hanya link ini',
+                denyButtonText: 'Seluruh project',
+                showDenyButton: true
+            });
+
+            if (scopeChoice.dismiss) {
                 showNotification('Perubahan dibatalkan.', 'error');
                 return;
             }
-            // ==========================
+
+            const scope = scopeChoice.isConfirmed ? 'link' : 'project';
 
             statusSpan.style.display = 'inline';
             statusSpan.textContent = 'Menyimpan...';
 
             try {
-                const response = await fetch(apiEndpoint, {
+                const response = await fetch('/api/update-okupansi', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 'Okupansi Telkom (%)': parseFloat(okupansiValue) })
+                    body: JSON.stringify({
+                        kategori,
+                        scope, // 'link' atau 'project'
+                        value: parseFloat(okupansiValue),
+                        link_name: linkName, // pakai link sebagai identitas unik
+                        project: project
+                    })
                 });
+
                 const result = await response.json();
-                if (response.ok) {
+
+                if (result.success) {
                     showNotification('Okupansi berhasil diupdate', 'success');
                     currentFeature.properties['Okupansi Telkom (%)'] = parseFloat(okupansiValue);
                     document.querySelector('#okupansiDisplay span').textContent = `: ${okupansiValue}%`;
+
                     if (currentLayer && currentLayer.setStyle) {
                         currentLayer.setStyle(styleAlur(currentFeature));
                     }
-                    if (currentLayer && currentLayer._map) {
-                        currentLayer._map.invalidateSize();
-                    }
-                    setTimeout(() => refreshSpecificLayer(), 500);
-                    setTimeout(() => cancelEdit(), 1000);
+
+                    setTimeout(refreshSpecificLayer, 500);
+                    setTimeout(cancelEdit, 1000);
                 } else {
                     showNotification(`Error: ${result.error || 'Gagal menyimpan'}`, 'error');
                 }
@@ -372,6 +400,8 @@
                 statusSpan.style.display = 'none';
             }
         }
+
+
 
         function refreshSpecificLayer() {
             if (!currentTableName) return;
