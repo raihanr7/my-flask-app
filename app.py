@@ -63,6 +63,10 @@ FIELD_ORDER = {
 
     "Link_Satelit": [
         "site", "description"
+    ],
+    
+    "Palapa_Ring_FO_Cut": [
+        "name","description"
     ]
 }
 
@@ -193,24 +197,22 @@ def alus_submarine():
 def repair_skkl():
     return jsonify(get_geojson_from_table("SKKL_Repair_2025_BY_DCS"))
 
+@app.route('/api/fo-cut/paring')
+def fo_cut_paring():
+    return jsonify(get_geojson_from_table("Palapa_Ring_FO_Cut"))
 
 
 @app.route('/api/repair/skkl2024')
 def repair_skkl2024():
     return jsonify(get_geojson_from_table("SKKL_Repair_2024_BY_DCS"))
 
-
 @app.route('/api/backup-link')
 def backup_link():
     return jsonify(get_geojson_from_table("Backup Link"))
 
-
-
 @app.route('/api/link-satelit')
 def link_satelit():
     return jsonify(get_geojson_from_table("Link_Satelit"))
-
-
 
 @app.route('/api/tambah-marker', methods=['POST'])
 def tambah_marker():
@@ -233,6 +235,9 @@ def tambah_marker():
     elif kategori == 'repair2025':
         table_name = "SKKL_Repair_2025_BY_DCS"
         field_name = "name"
+    elif kategori == 'fo_cut':                       
+        table_name = "Palapa_Ring_FO_Cut"
+        field_name = "name"
     else:
         return {"success": False, "error": "Kategori tidak dikenal"}, 400
 
@@ -248,7 +253,6 @@ def tambah_marker():
     except Exception as e:
         conn.rollback()
         return {"success": False, "error": str(e)}, 500
-
 
 @app.route('/api/delete-marker', methods=['POST'])
 def delete_marker():
@@ -266,6 +270,8 @@ def delete_marker():
         table_name = "SKKL_Repair_2024_BY_DCS"
     elif kategori == 'repair2025':
         table_name = "SKKL_Repair_2025_BY_DCS"
+    elif kategori == 'fo_cut':
+        table_name = "Palapa_Ring_FO_Cut"
     else:
         return {"success": False, "error": "Kategori tidak dikenal"}, 400
 
@@ -297,7 +303,8 @@ def update_marker():
         'backup': 'Backup Link',
         'linksatelit': 'Link_Satelit',
         'repair2024': 'SKKL_Repair_2024_BY_DCS',
-        'repair2025': 'SKKL_Repair_2025_BY_DCS'
+        'repair2025': 'SKKL_Repair_2025_BY_DCS',
+        'fo_cut': 'Palapa_Ring_FO_Cut'
     }
     table_name = table_map.get(kategori)
     if not table_name:
@@ -379,8 +386,6 @@ def update_okupansi():
                     old_value=old_value,
                     new_value=value
                 )
-
-
 
 
             elif scope == 'project':
@@ -751,27 +756,32 @@ def setup_history_table():
 
 @app.route('/history')
 def history():
-    """Menampilkan halaman riwayat dengan filter ganda dan nama kolom yang benar."""
     try:
         cur = conn.cursor()
         selected_project_name = request.args.get('project_name_filter', '')
         selected_project = request.args.get('project_filter', '')
 
+        # PAGINATION
+        page = request.args.get('page', default=1, type=int)
+        per_page = 20
+        offset = (page - 1) * per_page
+
         cur.execute('SELECT DISTINCT "Project Name" FROM "Update History" WHERE "Project Name" IS NOT NULL ORDER BY "Project Name";')
         project_names = [row[0] for row in cur.fetchall()]
-        
+
         cur.execute('SELECT DISTINCT "Project" FROM "Update History" WHERE "Project" IS NOT NULL ORDER BY "Project";')
         projects = [row[0] for row in cur.fetchall()]
 
         params = []
         conditions = []
-        
-        # PASTIKAN NAMA KOLOM DI SELECT TIDAK MENGGUNAKAN (%)
+        query_count = '''
+            SELECT COUNT(*) FROM "Update History"
+        '''
         query = '''
             SELECT "History ID", "Project Name", "Project", "Link Name", "Old Value", "New Value", "Updated at"
             FROM "Update History"
         '''
-        
+
         if selected_project_name:
             conditions.append('"Project Name" = %s')
             params.append(selected_project_name)
@@ -780,13 +790,23 @@ def history():
             params.append(selected_project)
         if conditions:
             query += ' WHERE ' + ' AND '.join(conditions)
-        query += ' ORDER BY "Updated at" DESC;'
-        
+            query_count += ' WHERE ' + ' AND '.join(conditions)
+        query += ' ORDER BY "Updated at" DESC LIMIT %s OFFSET %s;'
+        params_count = params.copy()  # jangan lupa untuk count juga
+        params.append(per_page)
+        params.append(offset)
+
+        # Hitung total data untuk pagination
+        cur.execute(query_count, tuple(params_count))
+        total_data = cur.fetchone()[0]
+        total_pages = max(1, -(-total_data // per_page))  # pembulatan ke atas
+
         cur.execute(query, tuple(params))
         columns = [desc[0] for desc in cur.description]
         history_data_raw = cur.fetchall()
         cur.close()
 
+        import pytz
         wib_tz = pytz.timezone('Asia/Jakarta')
         history_data = []
         for row in history_data_raw:
@@ -794,20 +814,23 @@ def history():
             if item.get("Updated at"):
                 item["Updated at"] = item["Updated at"].astimezone(wib_tz).strftime('%Y-%m-%d %H:%M:%S %Z')
             history_data.append(item)
-        
+
         return render_template(
-            'history.html', 
-            history_data=history_data, 
+            'history.html',
+            history_data=history_data,
             project_names=project_names,
             projects=projects,
             selected_project_name=selected_project_name,
-            selected_project=selected_project
+            selected_project=selected_project,
+            page=page,
+            total_pages=total_pages
         )
-    
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         return "Gagal memuat riwayat. Silakan cek terminal untuk detail error."
+
 
 # Debug endpoints
 @app.route('/api/debug/table/<table_name>')

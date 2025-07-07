@@ -1,4 +1,4 @@
-<!-- INi syntax peta ya ya ya-->
+<!-- INi syntax peta ya ya ya semangat pagi pagi pagi pagi-->
 
 <!DOCTYPE html>
 <html lang="en">
@@ -195,6 +195,50 @@
             background: #4CAF50 !important;
             color: #fff !important;
         }
+        
+        .leaflet-bar.leaflet-control,
+        .leaflet-bar {
+            box-shadow: 0 1px 5px rgba(0,0,0,0.12);
+            margin-bottom: 4px !important;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .leaflet-bar a,
+        .leaflet-bar button {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            font-size: 20px;
+            background: #fff !important;
+            color: #333 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            outline: none;
+            transition: background 0.18s;
+        }
+
+        .leaflet-bar a:hover,
+        .leaflet-bar button:hover {
+            background: #eaf4ff !important;
+        }
+
+        .leaflet-bar.leaflet-control img,
+        .leaflet-bar.leaflet-control svg {
+            width: 22px !important;
+            height: 22px !important;
+            max-width: 22px !important;
+            max-height: 22px !important;
+            display: block;
+            margin: 0 auto;
+            padding: 0;
+            object-fit: contain;
+        }
 
     </style>
 </head>
@@ -204,6 +248,9 @@
     <div id="sidebar">
         <button id="closeSidebar">Tutup</button>
         <div id="sidebarContent"></div>
+    </div>
+    <div id="btnToggleLabel" class="leaflet-bar leaflet-control" title="On/Off Label" style="margin-bottom: 4px;">
+        <a href="#" style="font-size: 21px; padding: 4px 10px;">🏷️</a>
     </div>
     <!-- Modal Add Marker -->
     <div id="markerModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999; background:rgba(0,0,0,0.3);">
@@ -216,6 +263,7 @@
             <option value="linksatelit">Link Satelit</option>
             <option value="repair2024">SKKL Repair 2024</option>
             <option value="repair2025">SKKL Repair 2025</option>
+            <option value="fo_cut">FO Cut</option>
         </select>
         <label>Nama Site:</label><br>
         <input type="text" id="siteInput" required style="width:100%;margin-bottom:8px;" placeholder="Nama Site"><br>
@@ -239,8 +287,6 @@
         };
         // Inisialisasi map, default pakai Google Satellite
         const map = L.map('map', {
-            maxBounds: [[-12, 90], [7, 142]],
-            maxBoundsViscosity: 1.0,
             layers: [baseLayers["Google Satellite"]]
         }).setView([-2.5, 120], 5);
 
@@ -346,12 +392,12 @@
             }
 
             const scopeChoice = await Swal.fire({
-                title: `Ubah Okupansi jadi ${okupansiValue}%`,
-                text: 'Terapkan perubahan ke mana?',
+                title: `Apakah yakin ingin mengubah nilai okupansi menjadi ${okupansiValue}%?`,
+                text: 'Silakan pilih',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Hanya link ini',
-                denyButtonText: 'Seluruh project',
+                denyButtonText: 'Seluruh ink pada project ini',
                 showDenyButton: true
             });
 
@@ -459,6 +505,8 @@
         const skklRepair2024Layer = L.layerGroup();
         const backupLinkLayer = L.layerGroup();
         const linkSatelitLayer = L.layerGroup();
+        const foCutLayer = L.layerGroup();
+
 
 
         // LABEL ON/OFF LOGIC
@@ -513,9 +561,17 @@
                         }
                     });
                     layer.addTo(targetGroup);
+                    layer.eachLayer(l => searchablePointsLayer.addLayer(l)); 
                 })
                 .catch(err => console.error("Failed to load:", url, err));
         }
+
+        const foCutIcon = L.icon({
+            iconUrl: '/static/images/exclamation.png',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -12]
+        });
 
         const repairIcon = L.icon({
             iconUrl: '/static/images/repair.png',
@@ -596,7 +652,6 @@
         }
 
 
-
         function loadBackupLinkLayer() {
             fetch('/api/backup-link')
                 .then(res => res.json())
@@ -639,9 +694,29 @@
                 });
         }
 
+        function loadFoCutLayer() {
+            fetch('/api/fo-cut/paring')
+                .then(res => res.json())
+                .then(data => {
+                    foCutLayer.clearLayers();
+                    const layer = L.geoJSON(data, {
+                        pointToLayer: (f, latlng) => L.marker(latlng, { icon: foCutIcon }),
+                        onEachFeature: function (feature, layer) {
+                            feature.properties.kategori = 'fo_cut';        // ← penting
+                            layer.bindPopup(
+                                `<b>${feature.properties.name || '-'}</b><br>${feature.properties.description || ''}` +
+                                `<br><button onclick="hapusMarker('fo_cut', '${feature.properties.id}')"` +
+                                `style="margin-top:6px;background:#f44336;color:#fff;border:none;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:13px;">Hapus</button>`
+                            );
+                        }
+                    });
+                    layer.addTo(foCutLayer);
+                });
+        }
+
+
         
-        
-        
+    
         loadLinkSatelitLayer();
         setInterval(loadLinkSatelitLayer, 30000);
 
@@ -654,6 +729,9 @@
         loadSKKLRepair2024Layer();
         setInterval(loadSKKLRepair2024Layer, 30000);
         
+        loadFoCutLayer();
+        setInterval(loadFoCutLayer, 30000);
+
         refreshAllLayers();
         setInterval(refreshAllLayers, 30000);
         
@@ -664,14 +742,20 @@
         legend.onAdd = function () {
             const div = L.DomUtil.create("div", "legend");
             div.innerHTML = "<h4>Keterangan Peta</h4>" +
+                "<hr>" +
                 "<img src='/static/images/microwave.png' style='width:18px; height:18px; margin-right:8px;'>Microwave/Radio<br>" +
+                "<img src='/static/images/backuplink.png' style='width:18px; height:18px; margin-right:8px;'>Backup Link<br>" +
+                "<img src='/static/images/linksatelit.png' style='width:18px; height:18px; margin-right:8px;'>Link Satelit<br>" +
+                "<img src='/static/images/repair.png' style='width:18px; height:18px; margin-right:8px;'>Repair SKKL<br>" +
+                "<img src='/static/images/exclamation.png' style='width:18px;height:18px;margin-right:8px;'>FO Cut<br>" +
+                "<hr>" +
                 "<i style='background:#00bfff'></i> Kota Interkoneksi<br>" +
                 "<i style='background:#ffff00'></i> Kota Layanan<br>" +
+                "<i style='background:#ff9800'></i> Submarine Cable<br>" +
                 "<hr>" +
                 "<i style='background:green'></i> Okupansi < 50%<br>" +
                 "<i style='background:yellow'></i> Okupansi 50–80%<br>" +
-                "<i style='background:red'></i> Okupansi > 80%<br>" +
-                "<i style='background:#d3f462; border:1px dashed #d3f462;'></i> Submarine Cable<br>";
+                "<i style='background:red'></i> Okupansi > 80%<br>";
             return div;
         };
         legend.addTo(map);
@@ -685,53 +769,65 @@
             "SKKL Repair 2025": skklRepairLayer,
             "SKKL Repair 2024": skklRepair2024Layer,
             "Backup Link": backupLinkLayer,
-            "Link Satelit": linkSatelitLayer
+            "Link Satelit": linkSatelitLayer,
+            "FO Cut": foCutLayer
         }).addTo(map);
 
         // UPDATE HISTORY CONTROL
-        L.Control.HistoryButton = L.Control.extend({
-            onAdd: function(map) {
-                const a = L.DomUtil.create('a');
-                a.href = '/history';
-                a.innerHTML = 'Update History';
-                const container = L.DomUtil.create('div', 'leaflet-control-history leaflet-control');
-                container.appendChild(a);
-                L.DomEvent.disableClickPropagation(container);
-                return container;
-            },
+        L.Control.HistoryIcon = L.Control.extend({
+        onAdd: function(map) {
+            var btn = L.DomUtil.create('a', '');
+            btn.href = '/history';
+            btn.innerHTML = '⏳';
+            btn.title = 'Update History';
+            btn.style.fontSize = '20px';
+            btn.style.padding = '4px 4px';
+            var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+            container.appendChild(btn);
+            return container;
+        }
         });
-        new L.Control.HistoryButton({ position: 'topleft' }).addTo(map);
+        new L.Control.HistoryIcon({ position: 'topleft' }).addTo(map);
 
-        // TOGGLE LABEL CONTROL (baru)
-        L.Control.ToggleLabel = L.Control.extend({
-            onAdd: function(map) {
-                const container = L.DomUtil.create('div', 'leaflet-control-history leaflet-control');
-                const btn = L.DomUtil.create('a', '', container);
-                btn.id = 'toggleLabelBtn';
-                btn.innerHTML = 'Matikan Label';
-                btn.href = '#';
-                btn.onclick = function(e) {
-                    e.preventDefault();
-                    toggleLabels();
-                };
-                return container;
-            },
-            onRemove: function(map) {}
+        L.Control.LabelIcon = L.Control.extend({
+        onAdd: function(map) {
+            var btn = L.DomUtil.create('a', '');
+            btn.href = '#';
+            btn.innerHTML = '🏷️';
+            btn.title = 'On/Off Label';
+            btn.style.fontSize = '21px';
+            btn.style.padding = '2px 2px';
+            btn.onclick = function(e) {
+            e.preventDefault(); toggleLabels();
+            };
+            var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+            container.appendChild(btn);
+            return container;
+        }
         });
-        new L.Control.ToggleLabel({ position: 'topleft' }).addTo(map);
+        new L.Control.LabelIcon({ position: 'topleft' }).addTo(map);
+
 
         // SEARCH CONTROL
-        map.addControl(new L.Control.Search({
+        const searchCtl = new L.Control.Search({
             position: 'topleft',
             layer: searchablePointsLayer,
             propertyName: 'title',
             marker: false,
             textPlaceholder: 'Cari nama lokasi...',
             textErr: 'Lokasi tidak ditemukan',
-            moveToLocation: function(latlng, title, map) {
+            moveToLocation: function (latlng, title, map) {
                 map.setView(latlng, 10);
             }
-        }));
+        });
+
+        map.addControl(searchCtl);
+
+        /* ── setelah kontrol terpasang, buang layer‑nya dari peta
+            supaya marker tidak langsung tampil saat peta pertama kali dibuka */
+        if (map.hasLayer(searchablePointsLayer)) {
+            map.removeLayer(searchablePointsLayer);
+        }
         
         map.pm.addControls({
             position: 'topleft',
@@ -743,7 +839,7 @@
             drawText: false,
             drawPolyline: true,
             editMode: false,
-            dragMode: true,
+            dragMode: false,
             cutPolygon: false,
             removalMode: true,
             rotateMode: false
@@ -801,6 +897,7 @@
                     else if (kategori === 'backup') loadBackupLinkLayer();
                     else if (kategori === 'repair2024') loadSKKLRepair2024Layer();
                     else if (kategori === 'repair2025') loadSKKLRepairLayer();
+                    else if (kategori === 'fo_cut') loadFoCutLayer();  
                 } else {
                     alert('Gagal menambah marker!');
                 }
@@ -853,6 +950,7 @@
                         else if (kategori === 'backup') loadBackupLinkLayer();
                         else if (kategori === 'repair2024') loadSKKLRepair2024Layer();
                         else if (kategori === 'repair2025') loadSKKLRepairLayer();
+                        else if (kategori === 'fo_cut') loadFoCutLayer();  
                     } else {
                         alert('Gagal hapus marker dari database!');
                     }
@@ -905,7 +1003,8 @@
                     if (kategori === 'linksatelit')       loadLinkSatelitLayer();
                     else if (kategori === 'backup')       loadBackupLinkLayer();
                     else if (kategori === 'repair2024')   loadSKKLRepair2024Layer();
-                    else if (kategori === 'repair2025')   loadSKKLRepairLayer();  // 2025
+                    else if (kategori === 'repair2025')   loadSKKLRepairLayer(); 
+                    else if (kategori === 'fo_cut')       loadFoCutLayer(); 
                     // =====================================
                 } else {
                     alert('Gagal update lokasi di database: ' + (data.error || ''));
@@ -914,10 +1013,6 @@
                 alert('Gagal koneksi ke server');
             }
         });
-
-
-
-
 
         // SCREENSHOTTER
         var screenshoter = L.simpleMapScreenshoter({
@@ -935,7 +1030,12 @@
             screenName: 'skkl-map',
             position: 'topright'
         }).addTo(map);
-    
+        
+        document.getElementById('btnToggleLabel').onclick = function(e) {
+            e.preventDefault();
+            toggleLabels(); // function sudah ada di script kamu
+        };
+
     
     </script>
 </body>

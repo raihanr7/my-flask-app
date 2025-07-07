@@ -50,6 +50,7 @@
         <table>
             <thead>
                 <tr>
+                    <th>No</th>
                     <th>History ID</th>
                     <th>Project Name</th>
                     <th>Project</th>
@@ -62,6 +63,7 @@
             <tbody>
                 {% for item in history_data %}
                 <tr>
+                    <td>{{ (page - 1) * 20 + loop.index }}</td>
                     <td>{{ item['History ID'] }}</td>
                     <td>{{ item['Project Name'] }}</td>
                     <td>{{ item['Project'] }}</td>
@@ -80,12 +82,43 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" style="text-align: center;">Tidak ada riwayat pembaruan yang cocok dengan filter.</td>
+                    <td colspan="8" style="text-align: center;">Tidak ada riwayat pembaruan yang cocok dengan filter.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        
+            {% if total_pages > 1 %}
+            <div style="display:flex;justify-content:center;align-items:center;gap:10px;margin:32px 0;">
+                <!-- Tombol Previous -->
+                {% if page > 1 %}
+                    <a href="{{ url_for('history', page=page-1, project_name_filter=selected_project_name, project_filter=selected_project) }}"
+                    style="padding:6px 12px;border-radius:5px;border:1px solid #444;background:#222;color:#fff;font-size:22px;text-decoration:none;display:flex;align-items:center;justify-content:center;">
+                    &#8592;
+                    </a>
+                {% else %}
+                    <span style="padding:6px 12px;border-radius:5px;border:1px solid #888;background:#444;color:#bbb;font-size:22px;opacity:0.6;display:flex;align-items:center;justify-content:center;">
+                    &#8592;
+                    </span>
+                {% endif %}
+
+                <!-- Page X of Y -->
+                <span style="padding:6px 18px;border-radius:5px;background:#222;color:#fff;font-size:17px;font-weight:bold;">
+                    Page {{page}} of {{total_pages}}
+                </span>
+
+                <!-- Tombol Next -->
+                {% if page < total_pages %}
+                    <a href="{{ url_for('history', page=page+1, project_name_filter=selected_project_name, project_filter=selected_project) }}"
+                    style="padding:6px 12px;border-radius:5px;border:1px solid #444;background:#222;color:#fff;font-size:22px;text-decoration:none;display:flex;align-items:center;justify-content:center;">
+                    &#8594;
+                    </a>
+                {% else %}
+                    <span style="padding:6px 12px;border-radius:5px;border:1px solid #888;background:#444;color:#bbb;font-size:22px;opacity:0.6;display:flex;align-items:center;justify-content:center;">
+                    &#8594;
+                    </span>
+                {% endif %}
+            </div>
+            {% endif %}
         <a href="/" class="btn-back">Kembali</a>
     </div>
 </body>
