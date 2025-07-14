@@ -23,27 +23,27 @@ conn = psycopg2.connect(
 FIELD_ORDER = {
     "Palapa_Ring_Barat_Alur": [
         "Link", "Project Name", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
-        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
+        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Periode", "Nilai Kontrak", "Updated at"
     ],
     "Palapa_Ring_Tengah_Alur": [
         "Link", "Project Name", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
-        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
+        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Periode", "Nilai Kontrak", "Updated at"
     ],
     "Palapa_Ring_Timur_Alur": [
         "Link", "Project Name", "Project", "Panjang Kabel Laut", "Panjang Kabel Darat", "Total Panjang Kabel",
-        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Updated at"
+        "Kapasitas Palapa Ring", "Telkom Sewa", "Okupansi Telkom (%)", "Media Transmisi", "Periode", "Nilai Kontrak", "Updated at"
     ],
     "Palapa_Ring_Barat_Point": [
         "Nama", "Project Name", "Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Nilai Kontrak", "Periode", "Updated at"
     ],
     "Palapa_Ring_Tengah_Point": [
         "Nama", "Project Name", "Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Nilai Kontrak", "Periode", "Updated at"
     ],
     "Palapa_Ring_Timur_Point": [
         "Nama", "Project Name","Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Updated at"
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Nilai Kontrak", "Periode", "Updated at"
     ],
     "SubmarineCable_Alur": [
         "Link", "Description"
