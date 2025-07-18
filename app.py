@@ -35,15 +35,15 @@ FIELD_ORDER = {
     ],
     "Palapa_Ring_Barat_Point": [
         "Nama", "Project Name", "Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Nilai Kontrak", "Periode", "Updated at"
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Periode", "Nilai Kontrak", "Updated at"
     ],
     "Palapa_Ring_Tengah_Point": [
         "Nama", "Project Name", "Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Nilai Kontrak", "Periode", "Updated at"
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Periode", "Nilai Kontrak",  "Updated at"
     ],
     "Palapa_Ring_Timur_Point": [
         "Nama", "Project Name","Project", "Nama Kota", "Nama Provinsi",
-        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Nilai Kontrak", "Periode", "Updated at"
+        "Longitude", "Latitude", "Keterangan", "Media Transmisi", "Periode", "Nilai Kontrak", "Updated at"
     ],
     "SubmarineCable_Alur": [
         "Link", "Description"
@@ -646,7 +646,7 @@ def get_update_history():
         cur = conn.cursor()
         
         query = '''
-            SELECT "History ID", "Project Name", "Project, "Link Name", "Old Value", "New Value", "Updated at"
+            SELECT "History ID", "Project Name", "Project", "Link Name", "Old Value", "New Value", "Updated at"
             FROM "Update History"
             WHERE 1=1
         '''

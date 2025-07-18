@@ -24,6 +24,8 @@
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+    <link rel="icon" type="image/png" href="/static/images/telkom.png">
+
 
     <style>
         body { margin: 0; padding: 0; }
@@ -249,9 +251,6 @@
         <button id="closeSidebar">Tutup</button>
         <div id="sidebarContent"></div>
     </div>
-    <div id="btnToggleLabel" class="leaflet-bar leaflet-control" title="On/Off Label" style="margin-bottom: 4px;">
-        <a href="#" style="font-size: 21px; padding: 4px 10px;">🏷️</a>
-    </div>
     <!-- Modal Add Marker -->
     <div id="markerModal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99999; background:rgba(0,0,0,0.3);">
         <form id="markerForm" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:28px 22px 16px 22px; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.18); min-width:260px;">
@@ -274,6 +273,13 @@
             <button type="button" id="batalMarker" style="flex:1;background:#e0e0e0;color:#444;padding:7px 0;border:none;border-radius:5px;">Batal</button>
         </div>
         </form>
+    </div>
+    <div id="historyModal" style="display:none;position:fixed;z-index:99999;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.35);">
+    <div style="background:#fff;max-width:600px;width:94vw;margin:40px auto 0 auto;padding:24px;border-radius:10px;box-shadow:0 6px 30px #0003;position:relative;">
+        <button onclick="closeHistoryModal()" style="position:absolute;top:8px;right:12px;font-size:18px;">✕</button>
+        <h3 style="margin-bottom:16px;font-size:18px;">Riwayat Edit</h3>
+        <div id="historyModalContent">Loading...</div>
+    </div>
     </div>
     <script>
         // Basemap definitions
@@ -328,63 +334,138 @@
         function buildSidebarContent(feature, data, layerInstance, tableName) {
             const order = data.field_order ?? Object.keys(feature.properties);
             let html = "<table>";
+
             order.forEach(key => {
                 let value = feature.properties[key] ?? "-";
                 if (key === "Okupansi Telkom (%)" && feature.properties.hasOwnProperty("Okupansi Telkom (%)")) {
-                    html += `<tr><td><strong>${key}</strong></td><td style="max-width:120px;">
-                        <div class="okupansi-value-container">
-                            <div class="okupansi-display" id="okupansiDisplay">
-                                <span>: ${value}%</span>
-                                <button class="btn-edit" onclick="startEdit()">edit</button>
-                            </div>
-                            <div class="okupansi-edit-form" id="okupansiEditForm" style="display: none;">
-                                <span>:</span>
-                                <input type="number" id="okupansiInput" class="edit-input" min="0" max="100" step="0.01" value="${value}" />
-                                <span>%</span>
-                                <button class="btn-save" onclick="saveOkupansi()">Simpan</button>
-                                <button class="btn-cancel" onclick="cancelEdit()">Batal</button>
-                                <span id="loadingStatus" class="loading-text" style="display: none;"></span>
-                            </div>
-                        </div>
-                    </td></tr>`;
+                    html += `
+                        <tr>
+                            <td><strong>${key}</strong></td>
+                            <td style="max-width:240px;">
+                                <div class="okupansi-value-container" style="display: flex; align-items: center; gap: 6px;">
+                                    <div class="okupansi-display" id="okupansiDisplay" style="display: flex; align-items: center; gap: 6px;">
+                                        <span>: ${value}%</span>
+                                        <button class="btn-edit" onclick="startEdit()">edit</button>
+                                        ${
+                                            (feature.properties["Link"] && tableName && tableName.includes("Alur")) ?
+                                            `<button onclick="showHistoryModal('${feature.properties["Link"]}')"
+                                                style="padding:2px 10px;font-size:11px;border-radius:5px;background:#eee;border:1px solid #444;cursor:pointer;">
+                                                Riwayat
+                                            </button>` : ""
+                                        }
+                                    </div>
+                                    <div class="okupansi-edit-form" id="okupansiEditForm" style="display: none;">
+                                        <span>:</span>
+                                        <input type="number" id="okupansiInput" class="edit-input" min="0" max="100" step="0.01" value="${value}" />
+                                        <span>%</span>
+                                        <button class="btn-save" onclick="saveOkupansi()">Simpan</button>
+                                        <button class="btn-cancel" onclick="cancelEdit()">Batal</button>
+                                        <span id="loadingStatus" class="loading-text" style="display: none;"></span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
                 } else if (key === "Nilai Kontrak" && value && value !== "-") {
-                    html += `<tr><td><strong>${key}</strong></td><td style="max-width:180px;">
-                        <div class="nilai-kontrak-value-container">
-                            <div class="nilai-kontrak-display" id="nilaiKontrakDisplay">
-                                <span>: ${formatRupiah(value)}</span>
-                                <button class="btn-edit" onclick="startEditNilaiKontrak()">edit</button>
-                            </div>
-                            <div class="nilai-kontrak-edit-form" id="nilaiKontrakEditForm" style="display: none; flex-direction: row; align-items: center; gap: 4px;">
-                                <span>:</span>
-                                <input type="number" id="nilaiKontrakInput" class="edit-input" min="0" step="1000" value="${feature.properties[key]}" style="width:120px;" />
-                                <button class="btn-save" onclick="saveNilaiKontrak()">Simpan</button>
-                                <button class="btn-cancel" onclick="cancelEditNilaiKontrak()">Batal</button>
-                                <span id="loadingStatusNilaiKontrak" class="loading-text" style="display: none;"></span>
-                            </div>
-                        </div>
-                    </td></tr>`;
+                    html += `
+                        <tr>
+                            <td><strong>${key}</strong></td>
+                            <td style="max-width:180px;">
+                                <div class="nilai-kontrak-value-container">
+                                    <div class="nilai-kontrak-display" id="nilaiKontrakDisplay">
+                                        <span>: ${formatRupiah(value)}</span>
+                                        <button class="btn-edit" onclick="startEditNilaiKontrak()">edit</button>
+                                    </div>
+                                    <div class="nilai-kontrak-edit-form" id="nilaiKontrakEditForm" style="display: none; flex-direction: row; align-items: center; gap: 4px;">
+                                        <span>:</span>
+                                        <input type="number" id="nilaiKontrakInput" class="edit-input" min="0" step="1000" value="${feature.properties[key]}" style="width:120px;" />
+                                        <button class="btn-save" onclick="saveNilaiKontrak()">Simpan</button>
+                                        <button class="btn-cancel" onclick="cancelEditNilaiKontrak()">Batal</button>
+                                        <span id="loadingStatusNilaiKontrak" class="loading-text" style="display: none;"></span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
                 } else if (key === "Periode") {
-                    html += `<tr><td><strong>${key}</strong></td><td style="max-width:160px;">
-                        <div class="periode-value-container">
-                            <div class="periode-display" id="periodeDisplay">
-                                <span>: ${value}</span>
-                                <button class="btn-edit" onclick="startEditPeriode()">edit</button>
-                            </div>
-                            <div class="periode-edit-form" id="periodeEditForm" style="display: none; flex-direction: row; align-items: center; gap: 4px;">
-                                <span>:</span>
-                                <input type="text" id="periodeInput" class="edit-input" value="${feature.properties[key] || ''}" style="width:100px;" />
-                                <button class="btn-save" onclick="savePeriode()">Simpan</button>
-                                <button class="btn-cancel" onclick="cancelEditPeriode()">Batal</button>
-                                <span id="loadingStatusPeriode" class="loading-text" style="display: none;"></span>
-                            </div>
-                        </div>
-                    </td></tr>`;
+                    html += `
+                        <tr>
+                            <td><strong>${key}</strong></td>
+                            <td style="max-width:160px;">
+                                <div class="periode-value-container">
+                                    <div class="periode-display" id="periodeDisplay">
+                                        <span>: ${value}</span>
+                                        <button class="btn-edit" onclick="startEditPeriode()">edit</button>
+                                    </div>
+                                    <div class="periode-edit-form" id="periodeEditForm" style="display: none; flex-direction: row; align-items: center; gap: 4px;">
+                                        <span>:</span>
+                                        <input type="text" id="periodeInput" class="edit-input" value="${feature.properties[key] || ''}" style="width:100px;" />
+                                        <button class="btn-save" onclick="savePeriode()">Simpan</button>
+                                        <button class="btn-cancel" onclick="cancelEditPeriode()">Batal</button>
+                                        <span id="loadingStatusPeriode" class="loading-text" style="display: none;"></span>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
                 } else {
-                    html += `<tr><td><strong>${key}</strong></td><td>: ${value}</td></tr>`;
+                    html += `
+                        <tr>
+                            <td><strong>${key}</strong></td>
+                            <td>: ${value}</td>
+                        </tr>
+                    `;
                 }
             });
+
             html += "</table>";
+
+            // Hapus tombol "Lihat Riwayat Edit" di bawah tabel (sudah pindah ke baris Okupansi Telkom)
+
             return html;
+        }
+
+
+
+        function showHistoryModal(linkName) {
+            document.getElementById('historyModal').style.display = '';
+            const content = document.getElementById('historyModalContent');
+            content.innerHTML = 'Loading...';
+
+            fetch(`/api/update-history?link=${encodeURIComponent(linkName)}`)
+            .then(r => r.json())
+            .then(data => {
+                console.log('HISTORY DATA:', data);
+                if (!data.data || !data.data.length) {
+                    content.innerHTML = "<div style='color:#777;'>Belum ada riwayat update untuk data ini.</div>";
+                    return;
+                }
+                let html = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <thead>
+                    <tr>
+                    <th style="border-bottom:1px solid #ddd;">Old Value</th>
+                    <th style="border-bottom:1px solid #ddd;">New Value</th>
+                    <th style="border-bottom:1px solid #ddd;">Updated at</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+                data.data.forEach(row => {
+                html += `<tr>
+                    <td style="padding:3px 6px;border-bottom:1px solid #f0f0f0;">${row['Old Value'] ?? '-'}</td>
+                    <td style="padding:3px 6px;border-bottom:1px solid #f0f0f0;">${row['New Value'] ?? '-'}</td>
+                    <td style="padding:3px 6px;border-bottom:1px solid #f0f0f0;">${row['Updated at'] ?? '-'}</td>
+                </tr>`;
+                });
+                html += "</tbody></table>";
+                content.innerHTML = html;
+
+            })
+            .catch(() => content.innerHTML = "Gagal load history.");
+        }
+
+
+        function closeHistoryModal() {
+            document.getElementById('historyModal').style.display = 'none';
         }
 
         function startEdit() {
